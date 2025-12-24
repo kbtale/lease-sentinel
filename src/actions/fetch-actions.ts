@@ -1,6 +1,6 @@
 "use server";
 
-import { adminDb } from "@/lib/firebase";
+import { getAdminDb } from "@/lib/firebase";
 import { Sentinel } from "@/models/schema";
 
 /**
@@ -11,7 +11,7 @@ import { Sentinel } from "@/models/schema";
  */
 export async function getSentinels(): Promise<Sentinel[]> {
   try {
-    const snapshot = await adminDb
+    const snapshot = await getAdminDb()
       .collection("sentinels")
       .orderBy("createdAt", "desc")
       .get();

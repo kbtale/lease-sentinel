@@ -7,6 +7,9 @@ import { DashboardShell } from "@/components/dashboard/DashboardShell";
 // Local - UI
 import { Toaster } from "@/components/ui/sonner";
 
+// I force dynamic rendering because Firebase credentials are not available at build time
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const sentinels = await getSentinels();
 

@@ -1,6 +1,9 @@
 import { initializeApp, getApps, cert, App } from "firebase-admin/app";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
 
+// I use a cached reference to avoid re-initialization
+let cachedDb: Firestore | null = null;
+
 /**
  * Initializes or retrieves the Firebase Admin SDK app instance.
  * Uses singleton pattern to prevent connection leaks during Next.js hot-reload.
@@ -37,7 +40,16 @@ function getFirebaseApp(): App {
   });
 }
 
-const app = getFirebaseApp();
-
-/** Firestore database instance for server-side operations. */
-export const adminDb: Firestore = getFirestore(app);
+/**
+ * Gets the Firestore database instance for server-side operations.
+ * I use lazy initialization to prevent build-time errors when env vars aren't available.
+ * 
+ * @returns Firestore database instance.
+ */
+export function getAdminDb(): Firestore {
+  if (!cachedDb) {
+    const app = getFirebaseApp();
+    cachedDb = getFirestore(app);
+  }
+  return cachedDb;
+}

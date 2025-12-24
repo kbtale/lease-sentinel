@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { adminDb } from "@/lib/firebase";
+import { getAdminDb } from "@/lib/firebase";
 import { extractLeaseData } from "@/lib/ai";
 import { SentinelSchema, Sentinel } from "@/models/schema";
 
@@ -105,7 +105,7 @@ export async function createSentinel(
     }
 
     // G) Save to Firestore collection 'sentinels'
-    await adminDb.collection("sentinels").add(validatedSentinel.data);
+    await getAdminDb().collection("sentinels").add(validatedSentinel.data);
 
     // H) Revalidate the dashboard path
     revalidatePath("/");
@@ -138,7 +138,7 @@ export async function deleteSentinel(
   sentinelId: string
 ): Promise<ActionResult> {
   try {
-    await adminDb.collection("sentinels").doc(sentinelId).delete();
+    await getAdminDb().collection("sentinels").doc(sentinelId).delete();
 
     revalidatePath("/");
 

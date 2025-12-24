@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase";
+import { getAdminDb } from "@/lib/firebase";
 import { dispatchAlert } from "@/lib/webhook";
 import { getTodayISO } from "@/lib/date-utils";
 import { LogSchema, Sentinel } from "@/models/schema";
+
+// I force dynamic rendering because Firebase credentials are not available at build time
+export const dynamic = "force-dynamic";
 
 /**
  * Cron API Route - Processes pending sentinels and dispatches webhook alerts.
@@ -20,7 +23,7 @@ export async function GET(req: Request): Promise<NextResponse> {
   const today = getTodayISO();
 
   // Query sentinels where triggerDate matches today AND status is PENDING
-  const snapshot = await adminDb
+  const snapshot = await getAdminDb()
     .collection("sentinels")
     .where("triggerDate", "==", today)
     .where("status", "==", "PENDING")
@@ -50,7 +53,7 @@ export async function GET(req: Request): Promise<NextResponse> {
         },
       });
 
-      await adminDb.collection("logs").add(logData);
+      await getAdminDb().collection("logs").add(logData);
     } else {
       // Log warning but leave status as PENDING for retry on next run
       console.warn(`Failed to dispatch alert for sentinel ${doc.id}`);
@@ -67,7 +70,7 @@ export async function GET(req: Request): Promise<NextResponse> {
         },
       });
 
-      await adminDb.collection("logs").add(logData);
+      await getAdminDb().collection("logs").add(logData);
     }
   });
 
