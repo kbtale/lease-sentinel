@@ -3,7 +3,7 @@
 "use client";
 
 // React
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 // Local - Actions
 import { createSentinel } from "@/actions/sentinel.actions";
@@ -21,20 +21,59 @@ interface FormState {
   errors?: Record<string, string[]>;
 }
 
+interface CronResponse {
+  success: boolean;
+  processed: number;
+}
+
 // ============================================================================
 // Component
 // ============================================================================
 
 export default function SimulatePage() {
-  // Hooks
+  // Hooks - Form
   const [state, formAction, isPending] = useActionState<FormState | null, FormData>(
     createSentinel,
     null
   );
 
+  // Hooks - Cron trigger
+  const [cronResult, setCronResult] = useState<CronResponse | null>(null);
+  const [cronError, setCronError] = useState<string | null>(null);
+  const [isTriggeringCron, setIsTriggeringCron] = useState(false);
+
   // Derived state
   const hasResult = state !== null;
   const isSuccess = state?.success === true;
+
+  // Handlers
+  async function handleTriggerCron() {
+    setIsTriggeringCron(true);
+    setCronResult(null);
+    setCronError(null);
+
+    try {
+      // NOTE: Exposing CRON_SECRET here is only acceptable for this internal simulation tool.
+      // In production, this page should be protected or removed entirely.
+      const response = await fetch("/api/cron/check", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = (await response.json()) as CronResponse;
+      setCronResult(data);
+    } catch (error) {
+      setCronError(error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setIsTriggeringCron(false);
+    }
+  }
 
   // Render
   return (
@@ -42,10 +81,10 @@ export default function SimulatePage() {
       <div className="max-w-2xl mx-auto space-y-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            🧪 Simulator V1
+            🧪 Simulator V2
           </h1>
           <p className="text-muted-foreground mt-2">
-            Developer tool to test the AI extraction pipeline.
+            Developer tool to test the AI extraction pipeline and cron system.
           </p>
           <Link
             href="/"
@@ -55,6 +94,7 @@ export default function SimulatePage() {
           </Link>
         </div>
 
+        {/* Test Extraction Form */}
         <form action={formAction} className="space-y-6 bg-card p-6 rounded-lg border">
           <div className="space-y-2">
             <label htmlFor="clause" className="text-sm font-medium">
@@ -113,6 +153,38 @@ export default function SimulatePage() {
             <p className="text-sm mt-1">{state?.message}</p>
           </div>
         )}
+
+        {/* System Override Section */}
+        <div className="bg-card p-6 rounded-lg border border-red-200">
+          <h2 className="text-xl font-semibold text-red-600 mb-2">
+            ⚠️ System Override
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Manually trigger the cron job to process all pending sentinels for today.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleTriggerCron}
+            disabled={isTriggeringCron}
+            className="w-full px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 disabled:opacity-50"
+          >
+            {isTriggeringCron ? "Triggering..." : "Trigger Cron Job Now"}
+          </button>
+
+          {cronResult && (
+            <pre className="mt-4 p-4 bg-muted rounded-md text-sm overflow-auto">
+              {JSON.stringify(cronResult, null, 2)}
+            </pre>
+          )}
+
+          {cronError && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-500 rounded-md text-red-800 text-sm">
+              <p className="font-medium">❌ Cron Error</p>
+              <p>{cronError}</p>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );
