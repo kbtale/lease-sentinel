@@ -27,3 +27,29 @@ export function getTodayISO(): string {
 export function isDateMatch(targetDate: string, currentDate: string): boolean {
   return targetDate === currentDate;
 }
+
+/**
+ * Checks if a sentinel's trigger date falls within N days of today.
+ * Used to determine if a "notice window" alert should fire - for example,
+ * alerting a user when a lease deadline is approaching within their specified window.
+ * 
+ * @param triggerDate - The sentinel's trigger date in YYYY-MM-DD format.
+ * @param todayDate - Today's date in YYYY-MM-DD format.
+ * @param windowDays - The number of days in the notice window (e.g., 30 for 30-day notice).
+ * @returns True if the trigger date is today or within windowDays from today (inclusive).
+ */
+export function isWithinNoticeWindow(
+  triggerDate: string,
+  todayDate: string,
+  windowDays: number
+): boolean {
+  const trigger = new Date(triggerDate);
+  const today = new Date(todayDate);
+  
+  // Calculate difference in days (trigger > today means future date)
+  const diffMs = trigger.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  
+  // True if trigger is today (0 days) or within windowDays ahead (inclusive)
+  return diffDays >= 0 && diffDays <= windowDays;
+}
