@@ -22,9 +22,10 @@ jobs:
         run: |
           echo "🔍 Checking .gitignore for secret file patterns..."
           MISSING=""
-          grep -q "\.env" .gitignore || MISSING="$MISSING .env"
-          grep -q "\.env\.local" .gitignore || MISSING="$MISSING .env.local" 
-          grep -q "firebase.*\.json" .gitignore || MISSING="$MISSING firebase-*.json"
+          # Check for .env patterns (wildcards like .env* cover .env.local)
+          grep -qE "\.env\*|\.env\.local" .gitignore || MISSING="$MISSING .env/.env.local"
+          # Check for firebase service account files
+          grep -qE "firebase.*\.json|leasesentinel.*\.json" .gitignore || MISSING="$MISSING firebase-*.json"
 
           if [ -n "$MISSING" ]; then
             echo "❌ SECURITY ALERT: .gitignore is missing patterns for:$MISSING"
