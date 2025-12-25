@@ -7,7 +7,6 @@ import { useOptimistic, useTransition, useRef } from "react";
 import { addDays, format } from "date-fns";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import Image from "next/image";
 
 // Local - Types
 import { Sentinel } from "@/models/schema";
@@ -17,6 +16,7 @@ import { createSentinel } from "@/actions/sentinel.actions";
 
 // Local - Components
 import { SentinelCard } from "@/components/dashboard/SentinelCard";
+import { UserNav } from "@/components/dashboard/user-nav";
 
 // Local - UI
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -113,15 +113,7 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
           <span className="text-sm text-muted-foreground hidden sm:block">
             {user.name || user.email}
           </span>
-          {user.image && (
-            <Image
-              src={user.image}
-              alt={user.name || "User avatar"}
-              width={40}
-              height={40}
-              className="rounded-full border"
-            />
-          )}
+          <UserNav user={user} />
         </div>
       </header>
 
