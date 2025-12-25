@@ -7,8 +7,42 @@ on:
     branches: [main, master]
 
 jobs:
+  # ==========================================================================
+  # Security Job - Runs first, blocks everything if secrets are found
+  # ==========================================================================
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for Gitleaks
+
+      - name: Verify .gitignore protects secrets
+        run: |
+          echo "🔍 Checking .gitignore for secret file patterns..."
+          MISSING=""
+          grep -q "\.env" .gitignore || MISSING="$MISSING .env"
+          grep -q "\.env\.local" .gitignore || MISSING="$MISSING .env.local" 
+          grep -q "firebase.*\.json" .gitignore || MISSING="$MISSING firebase-*.json"
+
+          if [ -n "$MISSING" ]; then
+            echo "❌ SECURITY ALERT: .gitignore is missing patterns for:$MISSING"
+            exit 1
+          fi
+          echo "✅ .gitignore properly configured"
+
+      - name: Run Gitleaks secret scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ==========================================================================
+  # Build & Test Job - Only runs if security passes
+  # ==========================================================================
   build-and-test:
     runs-on: ubuntu-latest
+    needs: security-scan # Waits for security scan to pass
 
     steps:
       - name: Checkout code
