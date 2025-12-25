@@ -15,7 +15,7 @@ export async function dispatchAlert(
   url: string,
   payload: Record<string, unknown>
 ): Promise<boolean> {
-  // I enforce a 5s timeout to prevent a single slow webhook from stalling the entire batch job.
+  // 5s timeout prevents slow webhooks from stalling the batch job
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
 

@@ -4,7 +4,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { getAdminDb } from "@/lib/firebase";
 import { extractLeaseData } from "@/lib/ai";
-import { SentinelSchema, Sentinel } from "@/models/schema";
+import { SentinelSchema } from "@/models/schema";
+import { auth } from "@/auth";
 
 // ============================================================================
 // Types
@@ -34,7 +35,7 @@ const FormInputSchema = z.object({
 
 /**
  * Creates a new Sentinel from lease text by extracting dates via AI.
- * Flow: Validate Input → AI Extraction → Validate Sentinel → Firestore Save → Revalidate.
+ * Flow: Auth Check → Validate Input → AI Extraction → Validate Sentinel → Firestore Save → Revalidate.
  * 
  * @param prevState - Previous action state (for useActionState compatibility).
  * @param formData - Form data containing clause and webhookUrl fields.
@@ -45,6 +46,15 @@ export async function createSentinel(
   formData: FormData
 ): Promise<ActionResult> {
   try {
+    // Auth check - I enforce authentication for data isolation
+    const session = await auth();
+    if (!session?.user?.email) {
+      return {
+        success: false,
+        message: "Unauthorized. Please sign in.",
+      };
+    }
+
     // A) Extract clause and webhookUrl from formData
     const rawInput = {
       clause: formData.get("clause"),
@@ -84,8 +94,9 @@ export async function createSentinel(
       };
     }
 
-    // E) Merge AI results with user input to form a Sentinel object
+    // E) Merge AI results with user input, including userId for RLS
     const sentinelData = {
+      userId: session.user.email, // Email as userId for Row-Level Security
       eventName: extracted.eventName,
       triggerDate: extracted.triggerDate,
       originalClause: clause,
@@ -130,6 +141,7 @@ export async function createSentinel(
 
 /**
  * Deletes a Sentinel by its Firestore document ID.
+ * I enforce that the user can only delete their own sentinels.
  * 
  * @param sentinelId - The Firestore document ID of the sentinel to delete.
  * @returns Standardized result object with success status and message.
@@ -138,6 +150,24 @@ export async function deleteSentinel(
   sentinelId: string
 ): Promise<ActionResult> {
   try {
+    // Auth check - I enforce authentication for data isolation
+    const session = await auth();
+    if (!session?.user?.email) {
+      return {
+        success: false,
+        message: "Unauthorized. Please sign in.",
+      };
+    }
+
+    // Verify ownership before delete
+    const doc = await getAdminDb().collection("sentinels").doc(sentinelId).get();
+    if (!doc.exists || doc.data()?.userId !== session.user.email) {
+      return {
+        success: false,
+        message: "Sentinel not found or access denied.",
+      };
+    }
+
     await getAdminDb().collection("sentinels").doc(sentinelId).delete();
 
     revalidatePath("/");

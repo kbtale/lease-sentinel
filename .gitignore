@@ -57,3 +57,6 @@ ui-debug.log
 
 # OS files
 Thumbs.db
+
+# Firebase service account key
+leasesentinel-firebase-adminsdk-*.json

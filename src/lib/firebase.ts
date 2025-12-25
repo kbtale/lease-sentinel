@@ -1,7 +1,7 @@
 import { initializeApp, getApps, cert, App } from "firebase-admin/app";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
 
-// I use a cached reference to avoid re-initialization
+// Cached reference to avoid re-initialization
 let cachedDb: Firestore | null = null;
 
 /**

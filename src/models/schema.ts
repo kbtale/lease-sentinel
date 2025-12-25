@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// I infer types from Zod to ensure runtime validation matches compile-time types.
+// Types inferred from Zod to ensure runtime validation matches compile-time types
 
 // ============================================================================
 // Enums
@@ -22,6 +22,7 @@ export type LogStatus = z.infer<typeof LogStatusEnum>;
  */
 export const SentinelSchema = z.object({
   id: z.string().optional(),
+  userId: z.string(), // Required for Row-Level Security filtering
   eventName: z.string().min(3, "Event name must be at least 3 characters"),
   triggerDate: z.string().regex(
     /^\d{4}-\d{2}-\d{2}$/,
@@ -33,7 +34,7 @@ export const SentinelSchema = z.object({
   createdAt: z.date().default(() => new Date()),
 });
 
-// I infer types from Zod to ensure runtime validation matches compile-time types.
+// Types inferred from Zod for type safety
 export type Sentinel = z.infer<typeof SentinelSchema>;
 
 /**
@@ -85,7 +86,7 @@ export const LogSchema = z.object({
   status: LogStatusEnum,
 });
 
-// I infer types from Zod to ensure runtime validation matches compile-time types.
+// Types inferred from Zod for type safety
 export type LogEntry = z.infer<typeof LogSchema>;
 
 // ============================================================================

@@ -4,7 +4,7 @@ import { dispatchAlert } from "@/lib/webhook";
 import { getTodayISO } from "@/lib/date-utils";
 import { LogSchema, Sentinel } from "@/models/schema";
 
-// I force dynamic rendering because Firebase credentials are not available at build time
+// Force dynamic rendering - Firebase credentials unavailable at build time
 export const dynamic = "force-dynamic";
 
 /**
@@ -29,7 +29,7 @@ export async function GET(req: Request): Promise<NextResponse> {
     .where("status", "==", "PENDING")
     .get();
 
-  // I use allSettled so that one crash doesn't stop other alerts from firing.
+  // allSettled ensures one crash doesn't stop other alerts from firing
   const promises = snapshot.docs.map(async (doc) => {
     const data = doc.data() as Sentinel;
 

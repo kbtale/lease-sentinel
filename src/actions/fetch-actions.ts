@@ -2,21 +2,30 @@
 
 import { getAdminDb } from "@/lib/firebase";
 import { Sentinel } from "@/models/schema";
+import { auth } from "@/auth";
 
 /**
- * Fetches all sentinels from Firestore, ordered by creation date (newest first).
- * I serialize Firestore Timestamps to ISO strings to ensure compatibility with Client Components.
+ * Fetches sentinels for the current user, ordered by creation date (newest first).
+ * I filter by userId to enforce Row-Level Security - users only see their own data.
  * 
  * @returns Promise resolving to array of Sentinel objects, or empty array on error.
  */
 export async function getSentinels(): Promise<Sentinel[]> {
   try {
+    // Auth check - I enforce authentication for data isolation
+    const session = await auth();
+    if (!session?.user?.email) {
+      return [];
+    }
+
+    // Filter by userId to enforce Row-Level Security
     const snapshot = await getAdminDb()
       .collection("sentinels")
+      .where("userId", "==", session.user.email)
       .orderBy("createdAt", "desc")
       .get();
 
-    // I convert Firestore documents to plain JSON-compatible objects
+    // Convert Firestore documents to plain JSON-compatible objects
     // because Firestore Timestamps cannot be passed directly to Client Components
     const sentinels: Sentinel[] = snapshot.docs.map((doc) => {
       const data = doc.data();
@@ -33,6 +42,7 @@ export async function getSentinels(): Promise<Sentinel[]> {
 
       return {
         id: doc.id,
+        userId: data.userId as string,
         eventName: data.eventName as string,
         triggerDate: data.triggerDate as string,
         originalClause: data.originalClause as string,

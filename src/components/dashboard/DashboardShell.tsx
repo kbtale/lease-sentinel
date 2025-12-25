@@ -7,6 +7,7 @@ import { useOptimistic, useTransition, useRef } from "react";
 import { addDays, format } from "date-fns";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import Image from "next/image";
 
 // Local - Types
 import { Sentinel } from "@/models/schema";
@@ -28,15 +29,22 @@ import { Label } from "@/components/ui/label";
 // Types
 // ============================================================================
 
+interface User {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
 interface DashboardShellProps {
   initialSentinels: Sentinel[];
+  user: User;
 }
 
 // ============================================================================
 // Component
 // ============================================================================
 
-export function DashboardShell({ initialSentinels }: DashboardShellProps) {
+export function DashboardShell({ initialSentinels, user }: DashboardShellProps) {
   // Refs
   const clauseRef = useRef<HTMLTextAreaElement>(null);
 
@@ -52,7 +60,7 @@ export function DashboardShell({ initialSentinels }: DashboardShellProps) {
 
   // Handlers
   function handleDemoFill() {
-    // I calculate expiration date 180 days from today so AI extracts today as the trigger
+    // Calculate expiration 180 days out so AI extracts today as the trigger date
     const expirationDate = addDays(new Date(), 180);
     const formattedDate = format(expirationDate, "MMMM d, yyyy");
     const demoClause = `Tenant must provide notice 180 days prior to expiration on ${formattedDate}.`;
@@ -66,9 +74,10 @@ export function DashboardShell({ initialSentinels }: DashboardShellProps) {
     const clause = formData.get("clause") as string;
     const webhookUrl = formData.get("webhookUrl") as string;
 
-    // I create a temporary sentinel for optimistic display while the server processes
+    // Temporary sentinel for optimistic display while server processes
     const optimisticSentinel: Sentinel = {
       id: `temp-${Date.now()}`,
+      userId: user.email || "temp",
       eventName: "Analyzing...",
       triggerDate: new Date().toISOString().split("T")[0],
       originalClause: clause,
@@ -92,6 +101,30 @@ export function DashboardShell({ initialSentinels }: DashboardShellProps) {
   // Render
   return (
     <>
+      {/* Header */}
+      <header className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">🛡️ LeaseSentinel</h1>
+          <p className="text-muted-foreground mt-1">
+            Autopilot for lease administration.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground hidden sm:block">
+            {user.name || user.email}
+          </span>
+          {user.image && (
+            <Image
+              src={user.image}
+              alt={user.name || "User avatar"}
+              width={40}
+              height={40}
+              className="rounded-full border"
+            />
+          )}
+        </div>
+      </header>
+
       {/* Create Form */}
       <section className="mb-8">
         <Card>

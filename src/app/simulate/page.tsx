@@ -1,4 +1,4 @@
-// I built this page to verify the AI extraction logic before actually investing my time in the main Dashboard UI.
+// Developer tool to verify AI extraction before building the main Dashboard UI
 
 "use client";
 
@@ -7,6 +7,7 @@ import { useActionState, useState } from "react";
 
 // Local - Actions
 import { createSentinel } from "@/actions/sentinel.actions";
+import { triggerCronManual } from "@/actions/admin.actions";
 
 // Local - UI
 import Link from "next/link";
@@ -21,9 +22,12 @@ interface FormState {
   errors?: Record<string, string[]>;
 }
 
-interface CronResponse {
+interface CronResult {
   success: boolean;
-  processed: number;
+  message: string;
+  data?: {
+    processed?: number;
+  };
 }
 
 // ============================================================================
@@ -38,8 +42,7 @@ export default function SimulatePage() {
   );
 
   // Hooks - Cron trigger
-  const [cronResult, setCronResult] = useState<CronResponse | null>(null);
-  const [cronError, setCronError] = useState<string | null>(null);
+  const [cronResult, setCronResult] = useState<CronResult | null>(null);
   const [isTriggeringCron, setIsTriggeringCron] = useState(false);
 
   // Derived state
@@ -50,26 +53,10 @@ export default function SimulatePage() {
   async function handleTriggerCron() {
     setIsTriggeringCron(true);
     setCronResult(null);
-    setCronError(null);
 
     try {
-      // NOTE: Exposing CRON_SECRET here is only acceptable for this internal simulation tool.
-      // In production, this page should be protected or removed entirely.
-      const response = await fetch("/api/cron/check", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as CronResponse;
-      setCronResult(data);
-    } catch (error) {
-      setCronError(error instanceof Error ? error.message : "Unknown error");
+      const result = await triggerCronManual();
+      setCronResult(result);
     } finally {
       setIsTriggeringCron(false);
     }
@@ -84,7 +71,7 @@ export default function SimulatePage() {
             🧪 Simulator V2
           </h1>
           <p className="text-muted-foreground mt-2">
-            Developer tool to test the AI extraction pipeline and cron system.
+            test the AI extraction pipeline and cron system.
           </p>
           <Link
             href="/"
@@ -173,15 +160,17 @@ export default function SimulatePage() {
           </button>
 
           {cronResult && (
-            <pre className="mt-4 p-4 bg-muted rounded-md text-sm overflow-auto">
-              {JSON.stringify(cronResult, null, 2)}
-            </pre>
-          )}
-
-          {cronError && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-500 rounded-md text-red-800 text-sm">
-              <p className="font-medium">❌ Cron Error</p>
-              <p>{cronError}</p>
+            <div
+              className={`mt-4 p-4 rounded-md border ${
+                cronResult.success
+                  ? "bg-green-50 border-green-500 text-green-800"
+                  : "bg-red-50 border-red-500 text-red-800"
+              }`}
+            >
+              <p className="font-medium">
+                {cronResult.success ? "✅ Cron Triggered" : "❌ Cron Error"}
+              </p>
+              <p className="text-sm mt-1">{cronResult.message}</p>
             </div>
           )}
         </div>

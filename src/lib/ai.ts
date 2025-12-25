@@ -44,7 +44,7 @@ export async function extractLeaseData(
       },
     });
 
-    // I inject today's date so AI can calculate relative dates like "6 months before expiration"
+    // Today's date injected so AI can calculate relative dates like "6 months before expiration"
     const todayISO = new Date().toISOString();
 
     const prompt = `You are a lease administrator. Extract the event name and the deadline date from the text. Return JSON.
