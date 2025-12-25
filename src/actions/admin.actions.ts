@@ -2,7 +2,7 @@
 
 /**
  * Admin actions for system operations.
- * These are server-side only and never expose secrets to the client.
+ * These are server-side only.
  */
 
 interface AdminResult {
@@ -26,8 +26,6 @@ export async function triggerCronManual(): Promise<AdminResult> {
     if (!cronSecret) {
       throw new Error("CRON_SECRET is not configured");
     }
-
-    // Server-side fetch keeps the secret private
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const response = await fetch(`${baseUrl}/api/cron/check`, {
       method: "GET",

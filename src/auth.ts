@@ -1,26 +1,19 @@
+import "server-only";
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
 import { FirestoreAdapter } from "@auth/firebase-adapter";
 import { getAdminDb } from "@/lib/firebase";
+import { authConfig } from "./auth.config";
 
 /**
- * NextAuth v5 configuration with Firestore adapter.
- * I use JWT sessions to avoid database session complexity on serverless,
- * while still syncing user data via the Firestore adapter.
+ * Full NextAuth configuration with Firestore adapter.
+ * This runs in Node.js runtime only (not Edge).
  */
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [Google],
+  ...authConfig,
   adapter: FirestoreAdapter(getAdminDb()),
-  session: {
-    strategy: "jwt",
-  },
+  session: { strategy: "jwt" },
   callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
+    ...authConfig.callbacks,
     session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;

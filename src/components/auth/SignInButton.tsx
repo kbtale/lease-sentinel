@@ -1,18 +1,15 @@
-import { signIn } from "@/auth";
+"use client";
+
 import { Button } from "@/components/ui/button";
+import { loginAction } from "@/actions/auth.actions";
 
 /**
- * Server Component for Google Sign-In.
- * I use a Server Action form to handle the OAuth redirect securely.
+ * Client component for Google sign-in button.
+ * Uses server action to trigger OAuth flow.
  */
 export function SignInButton() {
   return (
-    <form
-      action={async () => {
-        "use server";
-        await signIn("google");
-      }}
-    >
+    <form action={loginAction}>
       <Button type="submit" size="lg" className="gap-2">
         <svg className="h-5 w-5" viewBox="0 0 24 24">
           <path
