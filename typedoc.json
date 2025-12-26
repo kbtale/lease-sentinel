@@ -39,7 +39,9 @@
     "invalidLink": false,
     "notDocumented": false
   },
+  "plugin": [],
   "theme": "default",
+  "customCss": "./typedoc-theme.css",
   "hideGenerator": true,
   "blockTags": [
     "@category",

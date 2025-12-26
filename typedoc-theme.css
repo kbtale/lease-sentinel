@@ -1,0 +1,198 @@
+/* Material Design Inspired Theme for TypeDoc */
+
+:root {
+  /* Primary colors - Material Design Blue */
+  --color-background: #0f172a;
+  --color-background-secondary: #1e293b;
+  --color-background-warning: #422006;
+  --color-warning-text: #fbbf24;
+  --color-icon-background: var(--color-background-secondary);
+  --color-accent: #3b82f6;
+  --color-active-menu-item: #3b82f6;
+  --color-text: #e2e8f0;
+  --color-text-aside: #94a3b8;
+  --color-link: #60a5fa;
+
+  /* Code highlighting */
+  --color-ts-keyword: #c084fc;
+  --color-ts-module: #67e8f9;
+  --color-ts-namespace: #67e8f9;
+  --color-ts-enum: #fbbf24;
+  --color-ts-enum-member: #fbbf24;
+  --color-ts-variable: #f472b6;
+  --color-ts-function: #a78bfa;
+  --color-ts-class: #34d399;
+  --color-ts-interface: #2dd4bf;
+  --color-ts-constructor: #fbbf24;
+  --color-ts-property: #fb923c;
+  --color-ts-method: #a78bfa;
+  --color-ts-call-signature: #a78bfa;
+  --color-ts-index-signature: #fb923c;
+  --color-ts-constructor-signature: #fbbf24;
+  --color-ts-parameter: #f472b6;
+  --color-ts-type-parameter: #f472b6;
+  --color-ts-accessor: #fb923c;
+  --color-ts-get-signature: #34d399;
+  --color-ts-set-signature: #fb7185;
+  --color-ts-type-alias: #2dd4bf;
+
+  /* UI elements */
+  --color-toolbar: #1e293b;
+  --color-toolbar-text: #e2e8f0;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better body styling */
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, sans-serif;
+  line-height: 1.6;
+}
+
+/* Enhanced header */
+header.tsd-page-toolbar {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-bottom: 1px solid #334155;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+/* Card-like containers */
+.tsd-panel {
+  background: var(--color-background-secondary);
+  border-radius: 12px;
+  border: 1px solid #334155;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Better code blocks */
+pre {
+  background: #0f172a !important;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  padding: 1rem;
+}
+
+code {
+  background: rgba(59, 130, 246, 0.1);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+}
+
+/* Navigation styling */
+.tsd-navigation {
+  padding: 1rem;
+}
+
+.tsd-navigation a {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.tsd-navigation a:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* Search dialog */
+#tsd-search {
+  background: var(--color-background-secondary);
+  border-radius: 12px;
+  border: 1px solid #334155;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+#tsd-search-input {
+  background: var(--color-background);
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: var(--color-text);
+}
+
+/* Signature styling */
+.tsd-signature {
+  background: rgba(59, 130, 246, 0.05);
+  border-left: 3px solid var(--color-accent);
+  padding: 0.75rem 1rem;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Member groups */
+.tsd-member-group {
+  margin-top: 2rem;
+}
+
+.tsd-member-group h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  border-bottom: 2px solid var(--color-accent);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+th,
+td {
+  padding: 0.75rem 1rem;
+  border: 1px solid #334155;
+}
+
+th {
+  background: var(--color-background-secondary);
+  font-weight: 600;
+}
+
+tr:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+/* Links */
+a {
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: #93c5fd;
+}
+
+/* Badges and tags */
+.tsd-kind-icon ~ span {
+  font-weight: 500;
+}
+
+/* Better focus states */
+*:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Category labels */
+.tsd-category-label {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

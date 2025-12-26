@@ -42,9 +42,14 @@ Encapsulates all Gemini API interactions. Transforms natural language lease clau
 
 Implements the **Dual-Auth pattern** for Edge/Node.js runtime compatibility:
 
-- `auth.config.ts` → Edge-safe configuration (no adapters)
-- `auth.ts` → Full config with Firestore adapter (Node.js only)
-- `proxy.ts` → Middleware using Edge-safe config
+- `auth.config.ts` → Edge-safe config (Google OAuth only, no adapters)
+- `auth.ts` → Full config with Firestore adapter + Resend Magic Link (Node.js only)
+- `proxy.ts` → Middleware handling public routes (`/login`, `/api-docs`) and protected routes
+
+**Providers:**
+
+- Google OAuth — Standard social login
+- Resend Magic Link — Passwordless email authentication (requires database adapter)
 
 **Search tips**: Use `@category:Auth Configuration` to explore authentication logic.
 

@@ -12,7 +12,6 @@ Think of LeaseSentinel as a **three-stage pipeline**:
 
 <img width="3104" height="1376" alt="image 1" src="https://github.com/user-attachments/assets/40ae07ff-fdb8-4d4b-bb0e-211191fedc90" />
 
-
 1. **Ingest** → User pastes lease clause + webhook URL
 2. **Extract** → Gemini 1.5 Flash parses dates from natural language
 3. **Monitor** → Firestore stores the sentinel; cron job checks daily
@@ -47,6 +46,7 @@ Create `.env.local` with:
 AUTH_SECRET="openssl rand -base64 32"
 AUTH_GOOGLE_ID="your-google-oauth-client-id"
 AUTH_GOOGLE_SECRET="your-google-oauth-secret"
+RESEND_API_KEY="your-resend-api-key"
 
 # AI
 GOOGLE_API_KEY="your-gemini-api-key"
@@ -63,7 +63,7 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), sign in with Google, and create your first Sentinel.
+Open [http://localhost:3000](http://localhost:3000), sign in with Google or Magic Link email, and create your first Sentinel.
 
 ---
 
@@ -170,17 +170,17 @@ npm run docs     # Generate TypeDoc documentation
 
 ## Tech Stack
 
-| Layer         | Technology                     |
-| ------------- | ------------------------------ |
-| Framework     | Next.js 16 (App Router)        |
-| Auth          | NextAuth v5 + Google OAuth     |
-| Database      | Firebase Firestore             |
-| AI            | Google Gemini 1.5 Flash        |
-| Validation    | Zod v4                         |
-| Styling       | Tailwind CSS v4                |
-| Testing       | Vitest + React Testing Library |
-| Documentation | TypeDoc                        |
-| Deployment    | Vercel                         |
+| Layer         | Technology                          |
+| ------------- | ----------------------------------- |
+| Framework     | Next.js 16 (App Router)             |
+| Auth          | NextAuth v5 + Google OAuth + Resend |
+| Database      | Firebase Firestore                  |
+| AI            | Google Gemini 1.5 Flash             |
+| Validation    | Zod v4                              |
+| Styling       | Tailwind CSS v4                     |
+| Testing       | Vitest + React Testing Library      |
+| Documentation | TypeDoc                             |
+| Deployment    | Vercel                              |
 
 ---
 

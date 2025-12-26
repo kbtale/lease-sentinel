@@ -75,3 +75,35 @@ export async function loginAction() {
 export async function logoutAction() {
   await signOut();
 }
+
+/**
+ * Server action to initiate Magic Link email sign-in.
+ * 
+ * @summary Sends a magic link to the provided email address.
+ * @category Auth Configuration
+ * 
+ * @security
+ * **Email Verification**: Resend handles email delivery. The magic link contains
+ * a time-limited token that expires after a single use.
+ * 
+ * @remarks
+ * This triggers the Resend provider to send a verification email containing
+ * a secure, single-use sign-in link. The user clicks the link to authenticate.
+ * 
+ * @param email - The email address to send the magic link to.
+ * 
+ * @example
+ * ```tsx
+ * // Client component usage
+ * "use client";
+ * import { signInWithEmail } from "@/actions/auth.actions";
+ * 
+ * const handleSubmit = async (email: string) => {
+ *   await signInWithEmail(email);
+ *   // Show "check your email" message
+ * };
+ * ```
+ */
+export async function signInWithEmail(email: string) {
+  await signIn("resend", { email, redirect: false });
+}
