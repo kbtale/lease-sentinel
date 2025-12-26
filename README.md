@@ -10,18 +10,8 @@ LeaseSentinel transforms natural language lease clauses into structured deadline
 
 Think of LeaseSentinel as a **three-stage pipeline**:
 
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   Lease Text    │────▶│   Gemini AI      │────▶│   Firestore     │
-│   + Webhook URL │     │   Extraction     │     │   + Scheduler   │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-                                                          │
-                                                          ▼
-                                                 ┌─────────────────┐
-                                                 │ Webhook Dispatch│
-                                                 │ (Slack/Discord) │
-                                                 └─────────────────┘
-```
+<img width="3104" height="1376" alt="image 1" src="https://github.com/user-attachments/assets/40ae07ff-fdb8-4d4b-bb0e-211191fedc90" />
+
 
 1. **Ingest** → User pastes lease clause + webhook URL
 2. **Extract** → Gemini 1.5 Flash parses dates from natural language
@@ -81,34 +71,7 @@ Open [http://localhost:3000](http://localhost:3000), sign in with Google, and cr
 
 LeaseSentinel follows a **Deep Module** design philosophy: each module has a simple interface but encapsulates significant complexity internally. This minimizes cognitive load—developers interact with clean APIs without needing to understand implementation details.
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           PRESENTATION LAYER                            │
-│                     Next.js App Router + React Server Components        │
-└───────────────────────────────────┬─────────────────────────────────────┘
-                                    │ useActionState()
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           SERVER ACTIONS LAYER                          │
-│        sentinel.actions.ts  │  auth.actions.ts  │  fetch-actions.ts     │
-│                                                                         │
-│   • Input validation (Zod)                                              │
-│   • Auth + Row-Level Security                                           │
-│   • AI orchestration                                                    │
-│   • Error normalization (ActionState<T>)                                │
-└───────────────────────────────────┬─────────────────────────────────────┘
-                                    │
-           ┌────────────────────────┼────────────────────────┐
-           ▼                        ▼                        ▼
-┌──────────────────┐    ┌──────────────────────┐    ┌──────────────────┐
-│   AI MODULE      │    │   AUTH MODULE        │    │   DATA MODULE    │
-│   lib/ai.ts      │    │   auth.ts            │    │   lib/firebase.ts│
-│                  │    │   auth.config.ts     │    │                  │
-│   Gemini 1.5     │    │   proxy.ts           │    │   Firestore      │
-│   Flash          │    │                      │    │   Admin SDK      │
-└──────────────────┘    │   Dual-Auth Pattern  │    └──────────────────┘
-                        └──────────────────────┘
-```
+<img width="2048" height="2080" alt="Image 2" src="https://github.com/user-attachments/assets/3980fcc6-316a-4a01-8322-a40bd2932bdb" />
 
 ### Module Isolation Principles
 
