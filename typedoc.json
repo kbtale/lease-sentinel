@@ -13,6 +13,7 @@
   "out": "./public/api-docs",
   "name": "LeaseSentinel Internal API",
   "readme": "./TYPEDOC_README.md",
+  "basePath": "/api-docs",
   "includeVersion": true,
   "categorizeByGroup": true,
   "defaultCategory": "Core",
