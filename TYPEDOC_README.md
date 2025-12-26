@@ -10,42 +10,7 @@ This documentation site provides searchable, interactive access to LeaseSentinel
 
 LeaseSentinel follows a **Deep Module** design philosophy: each module has a simple interface but encapsulates significant complexity internally.
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           PRESENTATION LAYER                            │
-│                     Next.js App Router + React Server Components        │
-└───────────────────────────────────┬─────────────────────────────────────┘
-                                    │ useActionState()
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           SERVER ACTIONS LAYER                          │
-│        sentinel.actions.ts  |  auth.actions.ts  |  fetch-actions.ts     │
-│                                                                         │
-│   • Input validation (Zod)                                              │
-│   • Auth + Row-Level Security                                           │
-│   • AI orchestration                                                    │
-│   • Error normalization (ActionState<T>)                                │
-└───────────────────────────────────┬─────────────────────────────────────┘
-                                    │
-           ┌────────────────────────┼────────────────────────┐
-           ▼                        ▼                        ▼
-┌──────────────────┐    ┌──────────────────────┐    ┌──────────────────┐
-│   AI MODULE      │    │   AUTH MODULE        │    │   DATA MODULE    │
-│   lib/ai.ts      │    │   auth.ts            │    │   lib/firebase.ts│
-│                  │    │   auth.config.ts     │    │                  │
-│   Gemini 1.5     │    │   proxy.ts           │    │   Firestore      │
-│   Flash          │    │                      │    │   Admin SDK      │
-└──────────────────┘    │   Dual-Auth Pattern: │    └──────────────────┘
-                        │   Edge + Node.js     │
-                        └──────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           DOMAIN SCHEMAS                                │
-│                         models/schema.ts                                │
-│                                                                         │
-│   SentinelSchema  |  LogSchema  |  ActionState<T>  |  Enums            │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+![Architecture Diagram](/architecture.png)
 
 ---
 
