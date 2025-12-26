@@ -13,19 +13,41 @@ import { auth } from "@/auth";
 
 /**
  * Standardized result object for Server Actions.
- * I use this pattern to never throw errors to the client.
+ * 
+ * @summary Return type for all mutation actions—ensures consistent error handling.
+ * @category Server Actions
+ * 
+ * @remarks
+ * This pattern guarantees that Server Actions **never throw** to the client.
+ * All errors are captured and returned as structured data, enabling
+ * predictable UI state management with `useActionState`.
+ * 
+ * @see {@link SentinelSchema} for the domain entity this action creates.
  */
 interface ActionResult {
+  /** Whether the action completed successfully. */
   success: boolean;
+  /** Human-readable status message for UI display. */
   message: string;
+  /** Field-level validation errors keyed by field name. */
   errors?: Record<string, string[]>;
 }
 
 /**
  * Schema for validating raw form input before AI processing.
+ * 
+ * @summary Zod schema for lease clause submission form.
+ * @category Database Schemas
+ * 
+ * @remarks
+ * This schema validates the **user-provided** input before it's sent to
+ * the AI for extraction. The AI output is then validated separately
+ * against {@link SentinelSchema}.
  */
 const FormInputSchema = z.object({
+  /** Natural language lease clause containing date/deadline information. */
   clause: z.string().min(10, "Lease clause must be at least 10 characters"),
+  /** Destination URL for webhook notifications when the deadline fires. */
   webhookUrl: z.string().url("Webhook URL must be a valid URL"),
 });
 
@@ -34,12 +56,63 @@ const FormInputSchema = z.object({
 // ============================================================================
 
 /**
- * Creates a new Sentinel from lease text by extracting dates via AI.
- * Flow: Auth Check → Validate Input → AI Extraction → Validate Sentinel → Firestore Save → Revalidate.
+ * Creates a new Sentinel from natural language lease text.
  * 
- * @param prevState - Previous action state (for useActionState compatibility).
- * @param formData - Form data containing clause and webhookUrl fields.
- * @returns Standardized result object with success status and message.
+ * @summary Validates input, extracts dates via Gemini AI, and persists to Firestore.
+ * @category Server Actions
+ * 
+ * @security
+ * **Authentication Required**: Rejects unauthenticated requests immediately.
+ * 
+ * **Row-Level Security**: The created Sentinel is tagged with the user's email
+ * as `userId`. All subsequent queries filter by this field, ensuring users
+ * can only access their own data.
+ * 
+ * @remarks
+ * This is the primary entry point for the Sentinel creation flow:
+ * 
+ * ```
+ * Auth Check → Validate Input → AI Extraction → Validate Sentinel → Firestore Save → Revalidate
+ * ```
+ * 
+ * The function uses {@link FormInputSchema} for input validation and
+ * {@link SentinelSchema} for the final entity validation before persistence.
+ * 
+ * @param prevState - Previous action state (for `useActionState` compatibility).
+ *   Pass `null` for initial renders.
+ * @param formData - Form data containing:
+ *   - `clause`: Natural language lease text
+ *   - `webhookUrl`: Destination for deadline notifications
+ * 
+ * @returns Promise resolving to {@link ActionResult} with:
+ *   - `success: true` + confirmation message on success
+ *   - `success: false` + error details on failure
+ * 
+ * @example
+ * ```tsx
+ * // Client component usage with useActionState
+ * "use client";
+ * import { useActionState } from "react";
+ * import { createSentinel } from "@/actions/sentinel.actions";
+ * 
+ * export function CreateSentinelForm() {
+ *   const [state, formAction, pending] = useActionState(createSentinel, null);
+ * 
+ *   return (
+ *     <form action={formAction}>
+ *       <textarea name="clause" placeholder="Paste lease clause..." />
+ *       <input name="webhookUrl" placeholder="https://hooks.slack.com/..." />
+ *       <button disabled={pending}>
+ *         {pending ? "Creating..." : "Create Sentinel"}
+ *       </button>
+ *       {state?.message && <p>{state.message}</p>}
+ *     </form>
+ *   );
+ * }
+ * ```
+ * 
+ * @see {@link extractLeaseData} for the AI extraction logic.
+ * @see {@link SentinelSchema} for the entity structure.
  */
 export async function createSentinel(
   prevState: ActionResult | null,
@@ -141,16 +214,69 @@ export async function createSentinel(
 
 /**
  * Deletes a Sentinel by its Firestore document ID.
- * I enforce that the user can only delete their own sentinels.
+ * 
+ * @summary Verifies ownership and removes a Sentinel from the database.
+ * @category Server Actions
+ * 
+ * @security
+ * **Authentication Required**: Rejects unauthenticated requests.
+ * 
+ * **Ownership Verification**: Before deletion, the function fetches the document
+ * and verifies that `userId` matches the authenticated user's email. This prevents
+ * users from deleting other users' Sentinels even if they obtain a document ID.
+ * 
+ * @remarks
+ * This action performs a **hard delete**—the Sentinel is permanently removed
+ * from Firestore. Consider implementing soft-delete (status flag) if audit
+ * trails are required.
+ * 
+ * Flow:
+ * ```
+ * Auth Check → Fetch Document → Verify Ownership → Delete → Revalidate
+ * ```
  * 
  * @param sentinelId - The Firestore document ID of the sentinel to delete.
- * @returns Standardized result object with success status and message.
+ *   Obtain this from {@link fetchSentinels} or the UI.
+ * 
+ * @returns Promise resolving to {@link ActionResult} with:
+ *   - `success: true` on successful deletion
+ *   - `success: false` + error message on auth failure or invalid ID
+ * 
+ * @example
+ * ```tsx
+ * // Client component usage with server action binding
+ * "use client";
+ * import { deleteSentinel } from "@/actions/sentinel.actions";
+ * import { useTransition } from "react";
+ * 
+ * export function DeleteButton({ sentinelId }: { sentinelId: string }) {
+ *   const [pending, startTransition] = useTransition();
+ * 
+ *   const handleDelete = () => {
+ *     startTransition(async () => {
+ *       const result = await deleteSentinel(sentinelId);
+ *       if (!result.success) {
+ *         console.error(result.message);
+ *       }
+ *     });
+ *   };
+ * 
+ *   return (
+ *     <button onClick={handleDelete} disabled={pending}>
+ *       {pending ? "Deleting..." : "Delete"}
+ *     </button>
+ *   );
+ * }
+ * ```
+ * 
+ * @see {@link createSentinel} for the creation counterpart.
+ * @see {@link fetchSentinels} to get sentinel IDs.
  */
 export async function deleteSentinel(
   sentinelId: string
 ): Promise<ActionResult> {
   try {
-    // Auth check - I enforce authentication for data isolation
+    // Auth check
     const session = await auth();
     if (!session?.user?.email) {
       return {

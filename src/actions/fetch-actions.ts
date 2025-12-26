@@ -5,32 +5,68 @@ import { Sentinel } from "@/models/schema";
 import { auth } from "@/auth";
 
 /**
- * Fetches sentinels for the current user, ordered by creation date (newest first).
- * I filter by userId to enforce Row-Level Security - users only see their own data.
+ * Fetches all sentinels for the authenticated user.
  * 
- * @returns Promise resolving to array of Sentinel objects, or empty array on error.
+ * @summary Retrieves user's sentinels from Firestore with RLS filtering.
+ * @category Server Actions
+ * 
+ * @security
+ * **Authentication Required**: Returns empty array for unauthenticated requests.
+ * 
+ * **Row-Level Security**: Queries are filtered by `userId` (user's email) to ensure
+ * users can only access their own sentinels. This filtering happens at the database
+ * query level, not post-fetch, for efficiency and security.
+ * 
+ * @remarks
+ * This function handles Firestore-specific serialization internally:
+ * - Converts Firestore `Timestamp` objects to JavaScript `Date` objects
+ * - Ensures all returned data is JSON-serializable for React Server Components
+ * 
+ * Results are ordered by `createdAt` descending (newest first).
+ * 
+ * @returns Promise resolving to array of {@link Sentinel} objects belonging to the
+ *   current user, or empty array if:
+ *   - User is not authenticated
+ *   - No sentinels exist
+ *   - Database error occurs
+ * 
+ * @example
+ * ```tsx
+ * // Server Component usage
+ * import { getSentinels } from "@/actions/fetch-actions";
+ * 
+ * export default async function Dashboard() {
+ *   const sentinels = await getSentinels();
+ * 
+ *   return (
+ *     <ul>
+ *       {sentinels.map((s) => (
+ *         <li key={s.id}>{s.eventName} - {s.triggerDate}</li>
+ *       ))}
+ *     </ul>
+ *   );
+ * }
+ * ```
+ * 
+ * @see {@link Sentinel} for the returned entity structure.
+ * @see {@link createSentinel} for creating new sentinels.
  */
 export async function getSentinels(): Promise<Sentinel[]> {
   try {
-    // Auth check - I enforce authentication for data isolation
     const session = await auth();
     if (!session?.user?.email) {
       return [];
     }
 
-    // Filter by userId to enforce Row-Level Security
     const snapshot = await getAdminDb()
       .collection("sentinels")
       .where("userId", "==", session.user.email)
       .orderBy("createdAt", "desc")
       .get();
 
-    // Convert Firestore documents to plain JSON-compatible objects
-    // because Firestore Timestamps cannot be passed directly to Client Components
     const sentinels: Sentinel[] = snapshot.docs.map((doc) => {
       const data = doc.data();
 
-      // Convert Firestore Timestamp to ISO string if present
       let createdAt: Date;
       if (data.createdAt && typeof data.createdAt.toDate === "function") {
         createdAt = data.createdAt.toDate();

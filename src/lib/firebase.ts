@@ -2,15 +2,30 @@ import "server-only";
 import { initializeApp, getApps, cert, App } from "firebase-admin/app";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
 
-// Cached reference to avoid re-initialization
+/**
+ * Cached Firestore instance to prevent connection leaks.
+ * @internal
+ */
 let cachedDb: Firestore | null = null;
 
 /**
  * Initializes or retrieves the Firebase Admin SDK app instance.
- * Uses singleton pattern to prevent connection leaks during Next.js hot-reload.
+ * 
+ * @summary Singleton factory for Firebase Admin app initialization.
+ * @category Database
+ * @internal
+ * 
+ * @remarks
+ * Uses the singleton pattern to prevent connection leaks during Next.js hot-reload.
+ * In development, Next.js re-executes modules on each file change. Without caching,
+ * this would create multiple Firebase connections, eventually exhausting the
+ * connection pool.
  * 
  * @returns The Firebase Admin App instance.
- * @throws Error if required environment variables are missing.
+ * @throws Error if required environment variables are missing:
+ *   - `FIREBASE_PROJECT_ID`
+ *   - `FIREBASE_CLIENT_EMAIL`
+ *   - `FIREBASE_PRIVATE_KEY`
  */
 function getFirebaseApp(): App {
   const existingApps = getApps();
@@ -29,9 +44,6 @@ function getFirebaseApp(): App {
     );
   }
 
-  console.log("Firebase Init: Project ID =", projectId);
-
-  // Private keys from environment variables have escaped newlines that must be converted
   const sanitizedPrivateKey = privateKey.replace(/\\n/g, "\n");
 
   return initializeApp({
@@ -45,9 +57,32 @@ function getFirebaseApp(): App {
 
 /**
  * Gets the Firestore database instance for server-side operations.
- * I use lazy initialization to prevent build-time errors when env vars aren't available.
  * 
- * @returns Firestore database instance.
+ * @summary Returns a cached Firestore client for database operations.
+ * @category Database
+ * 
+ * @remarks
+ * This function uses lazy initialization to prevent build-time errors when
+ * environment variables aren't available (e.g., during `next build` in CI).
+ * The Firestore instance is cached globally to ensure a single connection
+ * is reused across all requests.
+ * 
+ * **Import Restriction**: This module is marked with `"server-only"` to prevent
+ * accidental client-side imports, which would expose Firebase Admin credentials.
+ * 
+ * @returns Firestore database instance configured with Admin SDK credentials.
+ * 
+ * @example
+ * ```typescript
+ * // Server Action or API route
+ * import { getAdminDb } from "@/lib/firebase";
+ * 
+ * const db = getAdminDb();
+ * const snapshot = await db.collection("sentinels").get();
+ * ```
+ * 
+ * @see {@link createSentinel} for usage in Server Actions.
+ * @see {@link getSentinels} for read operations.
  */
 export function getAdminDb(): Firestore {
   if (!cachedDb) {
