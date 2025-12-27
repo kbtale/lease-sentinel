@@ -60,7 +60,8 @@
  */
 export async function dispatchAlert(
   url: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  headers?: Record<string, string>
 ): Promise<boolean> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -70,6 +71,7 @@ export async function dispatchAlert(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...headers,
       },
       body: JSON.stringify(payload),
       signal: controller.signal,

@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 // Central dispatcher webhook for Slack/Teams/Email/SMS routing
 const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL;
+const MAKE_API_KEY = process.env.MAKE_API_KEY;
 
 /**
  * Cron API Route - Processes pending sentinels and dispatches webhook alerts.
@@ -64,7 +65,12 @@ export async function GET(req: Request): Promise<NextResponse> {
       };
     }
 
-    const isSuccess = await dispatchAlert(dispatchUrl, payload);
+    // Build headers - include API key for Make.com requests
+    const headers = data.notificationMethod !== "custom" && MAKE_API_KEY 
+      ? { "x-make-apikey": MAKE_API_KEY }
+      : undefined;
+
+    const isSuccess = await dispatchAlert(dispatchUrl, payload, headers);
 
     if (isSuccess) {
       // Update sentinel status to FIRED
