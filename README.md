@@ -2,7 +2,7 @@
 
 **AI-powered lease deadline monitoring with proactive webhook alerts.**
 
-LeaseSentinel transforms natural language lease clauses into structured deadline trackers. Paste a lease clause, and Gemini AI extracts the critical date; when that date arrives, your configured webhook fires—Slack, Discord, CRM, or any HTTP endpoint.
+LeaseSentinel transforms natural language lease clauses into structured deadline trackers. Paste a lease clause, and Gemini AI extracts the critical date; when that date arrives, your configured webhook fires:Slack, Discord, CRM, or any HTTP endpoint.
 <img width="1439" height="725" alt="image" src="https://github.com/user-attachments/assets/e22d2ea9-6e9d-4f24-91d4-1029b3cbbb77" />
 <img width="1158" height="717" alt="image" src="https://github.com/user-attachments/assets/c9182d69-ca49-4741-832e-3d2f3cf37fad" />
 
@@ -71,7 +71,7 @@ Open [http://localhost:3000](http://localhost:3000), sign in with Google or Magi
 
 ## Deep Module Architecture
 
-LeaseSentinel follows a **Deep Module** design philosophy: each module has a simple interface but encapsulates significant complexity internally. This minimizes cognitive load—developers interact with clean APIs without needing to understand implementation details.
+LeaseSentinel follows a **Deep Module** design philosophy: each module has a simple interface but encapsulates significant complexity internally. This minimizes cognitive load: developers interact with clean APIs without needing to understand implementation details.
 
 <img width="2048" height="2080" alt="Image 2" src="https://github.com/user-attachments/assets/3980fcc6-316a-4a01-8322-a40bd2932bdb" />
 
@@ -160,25 +160,28 @@ Every Sentinel is tagged with `userId` (user's email). All queries filter by thi
 
 ## Notification Orchestration (Make.com)
 
+<img width="802" height="609" alt="image" src="https://github.com/user-attachments/assets/333997a4-b056-4601-987d-29bd5c1a8cda" />
+<img width="1032" height="434" alt="image" src="https://github.com/user-attachments/assets/c4a887ea-5faf-422a-8195-a04e1f49d66d" />
+
 _Serverless webhook orchestration layer handling multi-channel alert delivery._
 
 **How it Works:**
 
-1. **Webhook Receiver** — The scenario triggers when LeaseSentinel's cron job dispatches a POST request containing the sentinel payload (`eventName`, `triggerDate`, `notificationMethod`, `notificationTarget`).
+1. **Webhook Receiver** :  The scenario triggers when LeaseSentinel's cron job dispatches a POST request containing the sentinel payload (`eventName`, `triggerDate`, `notificationMethod`, `notificationTarget`).
 
-2. **Router Module** — A conditional router parses the `notificationMethod` field and splits execution into three isolated branches, ensuring each notification type is processed independently without blocking.
+2. **Router Module** :  A conditional router parses the `notificationMethod` field and splits execution into three isolated branches, ensuring each notification type is processed independently without blocking.
 
-3. **Slack Branch** — Executes a custom HTTP request to Slack's `users.lookupByEmail` API to resolve the user ID from the target email, then posts a formatted Block Kit message to the resolved DM channel.
+3. **Slack Branch** :  Executes a custom HTTP request to Slack's `users.lookupByEmail` API to resolve the user ID from the target email, then posts a formatted Block Kit message to the resolved DM channel.
 
-4. **SMS Branch (Twilio)** — Connects to Twilio's Programmable Messaging API to deliver time-sensitive deadline alerts via SMS to the configured phone number.
+4. **SMS Branch (Twilio)** :  Connects to Twilio's Programmable Messaging API to deliver time-sensitive deadline alerts via SMS to the configured phone number.
 
-5. **Email Branch (Gmail)** — Handles SMTP delivery through Gmail's API with templated HTML formatting for professional, branded notifications.
+5. **Email Branch (Gmail)** :  Handles SMTP delivery through Gmail's API with templated HTML formatting for professional, branded notifications.
 
 **Architecture Benefits:**
 
-- **Decoupled** — Notification logic lives outside the Next.js runtime, enabling independent scaling and iteration
-- **Fault-tolerant** — Each branch executes in isolation; a Twilio outage doesn't block Slack delivery
-- **Observable** — Make.com provides execution history, retry logic, and error alerting out of the box
+- **Decoupled** :  Notification logic lives outside the Next.js runtime, enabling independent scaling and iteration
+- **Fault-tolerant** :  Each branch executes in isolation; a Twilio outage doesn't block Slack delivery
+- **Observable** :  Make.com provides execution history, retry logic, and error alerting out of the box
 
 ## Development
 
