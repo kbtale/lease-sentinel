@@ -1,0 +1,7 @@
+# Mark generated TypeDoc documentation as generated code
+# This excludes them from GitHub language statistics
+public/api-docs/** linguist-generated=true
+public/api-docs/** linguist-documentation=true
+
+# Vendor files
+node_modules/** linguist-vendored=true
