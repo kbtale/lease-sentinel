@@ -158,6 +158,28 @@ Every Sentinel is tagged with `userId` (user's email). All queries filter by thi
 
 ---
 
+## Notification Orchestration (Make.com)
+
+_Serverless webhook orchestration layer handling multi-channel alert delivery._
+
+**How it Works:**
+
+1. **Webhook Receiver** — The scenario triggers when LeaseSentinel's cron job dispatches a POST request containing the sentinel payload (`eventName`, `triggerDate`, `notificationMethod`, `notificationTarget`).
+
+2. **Router Module** — A conditional router parses the `notificationMethod` field and splits execution into three isolated branches, ensuring each notification type is processed independently without blocking.
+
+3. **Slack Branch** — Executes a custom HTTP request to Slack's `users.lookupByEmail` API to resolve the user ID from the target email, then posts a formatted Block Kit message to the resolved DM channel.
+
+4. **SMS Branch (Twilio)** — Connects to Twilio's Programmable Messaging API to deliver time-sensitive deadline alerts via SMS to the configured phone number.
+
+5. **Email Branch (Gmail)** — Handles SMTP delivery through Gmail's API with templated HTML formatting for professional, branded notifications.
+
+**Architecture Benefits:**
+
+- **Decoupled** — Notification logic lives outside the Next.js runtime, enabling independent scaling and iteration
+- **Fault-tolerant** — Each branch executes in isolation; a Twilio outage doesn't block Slack delivery
+- **Observable** — Make.com provides execution history, retry logic, and error alerting out of the box
+
 ## Development
 
 ```bash
