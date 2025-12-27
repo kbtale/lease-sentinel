@@ -3,6 +3,8 @@
 **AI-powered lease deadline monitoring with proactive webhook alerts.**
 
 LeaseSentinel transforms natural language lease clauses into structured deadline trackers. Paste a lease clause, and Gemini AI extracts the critical date; when that date arrives, your configured webhook fires—Slack, Discord, CRM, or any HTTP endpoint.
+<img width="1439" height="725" alt="image" src="https://github.com/user-attachments/assets/e22d2ea9-6e9d-4f24-91d4-1029b3cbbb77" />
+<img width="1158" height="717" alt="image" src="https://github.com/user-attachments/assets/c9182d69-ca49-4741-832e-3d2f3cf37fad" />
 
 ---
 
