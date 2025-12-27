@@ -293,7 +293,7 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
                   key={template.id}
                   type="button"
                   onClick={() => handleTemplateClick(template.clause)}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg border border-transparent hover:border-zinc-700 hover:bg-zinc-800/50 transition-colors text-left group"
+                  className="w-full flex items-center gap-3 p-3 rounded-lg border border-transparent hover:border-zinc-700 hover:bg-zinc-800/50 transition-colors text-left group cursor-pointer"
                 >
                   <FileText className="h-4 w-4 text-zinc-500 group-hover:text-zinc-50 transition-colors" />
                   <span className="text-sm font-medium text-zinc-300 group-hover:text-zinc-50">{template.name}</span>
@@ -343,8 +343,8 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(sentinel.id)}
-                        disabled={deletingId === sentinel.id}
+                        onClick={() => sentinel.id && handleDelete(sentinel.id)}
+                        disabled={!sentinel.id || deletingId === sentinel.id}
                         className="text-rose-500 hover:text-rose-400 hover:bg-rose-500/10"
                       >
                         {deletingId === sentinel.id ? "..." : "Remove"}
