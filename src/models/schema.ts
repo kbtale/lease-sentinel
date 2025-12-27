@@ -94,6 +94,27 @@ export type LogStatus = z.infer<typeof LogStatusEnum>;
  * }
  * ```
  */
+
+/**
+ * Notification method options for alert delivery.
+ * 
+ * @summary Enum defining supported notification channels.
+ * @category Database Schemas
+ */
+export const NotificationMethodEnum = z.enum([
+  "slack",
+  "teams", 
+  "email",
+  "sms",
+  "custom"
+]);
+
+/**
+ * TypeScript type for notification methods.
+ * @category Database Schemas
+ */
+export type NotificationMethod = z.infer<typeof NotificationMethodEnum>;
+
 export const SentinelSchema = z.object({
   id: z.string().optional(),
   userId: z.string(),
@@ -103,7 +124,10 @@ export const SentinelSchema = z.object({
     "Trigger date must be in ISO format (YYYY-MM-DD)"
   ),
   originalClause: z.string(),
-  webhookUrl: z.string().url("Webhook URL must be a valid URL"),
+  /** @deprecated Use notificationMethod + notificationTarget instead */
+  webhookUrl: z.string().optional(),
+  notificationMethod: NotificationMethodEnum.default("custom"),
+  notificationTarget: z.string(), // email, phone, or webhook URL
   status: SentinelStatusEnum.default("PENDING"),
   createdAt: z.date().default(() => new Date()),
 });

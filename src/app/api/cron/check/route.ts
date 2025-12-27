@@ -7,6 +7,9 @@ import { LogSchema, Sentinel } from "@/models/schema";
 // Force dynamic rendering - Firebase credentials unavailable at build time
 export const dynamic = "force-dynamic";
 
+// Central dispatcher webhook for Slack/Teams/Email/SMS routing
+const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL;
+
 /**
  * Cron API Route - Processes pending sentinels and dispatches webhook alerts.
  * I designed this to be called daily by Vercel Cron at midnight UTC.
@@ -33,10 +36,35 @@ export async function GET(req: Request): Promise<NextResponse> {
   const promises = snapshot.docs.map(async (doc) => {
     const data = doc.data() as Sentinel;
 
-    const isSuccess = await dispatchAlert(data.webhookUrl, {
-      event: data.eventName,
-      date: data.triggerDate,
-    });
+    // Determine dispatch URL and payload based on notification method
+    let dispatchUrl: string;
+    let payload: Record<string, unknown>;
+
+    if (data.notificationMethod === "custom") {
+      // Custom webhook - send directly to user's URL
+      dispatchUrl = data.notificationTarget;
+      payload = {
+        event: data.eventName,
+        date: data.triggerDate,
+        clause: data.originalClause,
+      };
+    } else {
+      // Slack/Teams/Email/SMS - route through Make.com dispatcher
+      if (!MAKE_WEBHOOK_URL) {
+        console.error("MAKE_WEBHOOK_URL not configured - skipping non-custom notifications");
+        return;
+      }
+      dispatchUrl = MAKE_WEBHOOK_URL;
+      payload = {
+        method: data.notificationMethod,
+        handle: data.notificationTarget, // email or phone depending on method
+        event: data.eventName,
+        date: data.triggerDate,
+        clause: data.originalClause,
+      };
+    }
+
+    const isSuccess = await dispatchAlert(dispatchUrl, payload);
 
     if (isSuccess) {
       // Update sentinel status to FIRED
@@ -48,6 +76,7 @@ export async function GET(req: Request): Promise<NextResponse> {
         firedAt: new Date().toISOString(),
         status: "SUCCESS",
         payload: {
+          method: data.notificationMethod,
           event: data.eventName,
           date: data.triggerDate,
         },
@@ -64,6 +93,7 @@ export async function GET(req: Request): Promise<NextResponse> {
         firedAt: new Date().toISOString(),
         status: "FAILED",
         payload: {
+          method: data.notificationMethod,
           event: data.eventName,
           date: data.triggerDate,
           error: "Webhook dispatch failed",

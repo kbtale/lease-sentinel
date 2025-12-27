@@ -108,7 +108,8 @@ describe("createSentinel", () => {
       (auth as Mock).mockResolvedValue(null);
       const formData = createMockFormData({
         clause: "Tenant must provide notice 60 days before lease ends on Dec 31, 2025",
-        webhookUrl: "https://hooks.slack.com/test",
+        notificationMethod: "custom",
+        notificationTarget: "https://hooks.slack.com/test",
       });
 
       // Act
@@ -127,7 +128,8 @@ describe("createSentinel", () => {
       });
       const formData = createMockFormData({
         clause: "Tenant must provide notice 60 days before lease ends on Dec 31, 2025",
-        webhookUrl: "https://hooks.slack.com/test",
+        notificationMethod: "custom",
+        notificationTarget: "https://hooks.slack.com/test",
       });
 
       // Act
@@ -155,7 +157,8 @@ describe("createSentinel", () => {
       // Arrange
       const formData = createMockFormData({
         clause: "Short",
-        webhookUrl: "https://hooks.slack.com/test",
+        notificationMethod: "custom",
+        notificationTarget: "https://hooks.slack.com/test",
       });
 
       // Act
@@ -167,11 +170,12 @@ describe("createSentinel", () => {
       expect(result.errors?.clause).toContain("Lease clause must be at least 10 characters");
     });
 
-    it("should return validation error for invalid webhook URL", async () => {
+    it("should return validation error for empty notification target", async () => {
       // Arrange
       const formData = createMockFormData({
         clause: "Tenant must provide notice 60 days before lease ends on Dec 31, 2025",
-        webhookUrl: "not-a-valid-url",
+        notificationMethod: "custom",
+        notificationTarget: "",
       });
 
       // Act
@@ -180,14 +184,15 @@ describe("createSentinel", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.message).toBe("Validation failed");
-      expect(result.errors?.webhookUrl).toContain("Webhook URL must be a valid URL");
+      expect(result.errors?.notificationTarget).toContain("Notification target is required");
     });
 
     it("should return validation errors for multiple invalid fields", async () => {
       // Arrange
       const formData = createMockFormData({
         clause: "Short",
-        webhookUrl: "invalid",
+        notificationMethod: "custom",
+        notificationTarget: "",
       });
 
       // Act
@@ -196,7 +201,7 @@ describe("createSentinel", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.errors?.clause).toBeDefined();
-      expect(result.errors?.webhookUrl).toBeDefined();
+      expect(result.errors?.notificationTarget).toBeDefined();
     });
   });
 
@@ -216,7 +221,8 @@ describe("createSentinel", () => {
       (extractLeaseData as Mock).mockResolvedValue(null);
       const formData = createMockFormData({
         clause: "This is some ambiguous text that the AI cannot parse",
-        webhookUrl: "https://hooks.slack.com/test",
+        notificationMethod: "email",
+        notificationTarget: "test@example.com",
       });
 
       // Act
@@ -241,7 +247,8 @@ describe("createSentinel", () => {
       
       const formData = createMockFormData({
         clause: "Tenant must provide notice 60 days before lease ends",
-        webhookUrl: "https://hooks.slack.com/test",
+        notificationMethod: "custom",
+        notificationTarget: "https://hooks.slack.com/test",
       });
 
       // Act
@@ -276,7 +283,8 @@ describe("createSentinel", () => {
 
       const formData = createMockFormData({
         clause: "Tenant must provide notice 60 days before lease ends on Dec 31, 2025",
-        webhookUrl: "https://hooks.slack.com/test",
+        notificationMethod: "custom",
+        notificationTarget: "https://hooks.slack.com/test",
       });
 
       // Act
@@ -307,7 +315,8 @@ describe("createSentinel", () => {
 
       const formData = createMockFormData({
         clause: "Tenant must provide notice 60 days before lease ends on Dec 31, 2025",
-        webhookUrl: "https://hooks.slack.com/test",
+        notificationMethod: "slack",
+        notificationTarget: "test@example.com",
       });
 
       // Act
@@ -335,7 +344,8 @@ describe("createSentinel", () => {
 
       const formData = createMockFormData({
         clause: "Tenant must provide notice 60 days before lease ends on Dec 31, 2025",
-        webhookUrl: "https://hooks.slack.com/test",
+        notificationMethod: "email",
+        notificationTarget: userEmail,
       });
 
       // Act

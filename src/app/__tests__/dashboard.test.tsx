@@ -5,6 +5,7 @@ import { DashboardShell } from "@/components/dashboard/DashboardShell";
 // Mock server actions
 vi.mock("@/actions/sentinel.actions", () => ({
   createSentinel: vi.fn(),
+  deleteSentinel: vi.fn(),
 }));
 
 vi.mock("@/actions/auth.actions", () => ({
@@ -51,12 +52,11 @@ describe("DashboardShell", () => {
       <DashboardShell initialSentinels={[]} user={mockUser} />
     );
 
-    expect(screen.getByLabelText("Lease Clause")).toBeInTheDocument();
-    expect(screen.getByLabelText("Webhook URL")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /create sentinel/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Lease Clause to Track")).toBeInTheDocument();
+    expect(screen.getByText("Alert Destination")).toBeInTheDocument();
   });
 
-  it("renders sentinel cards when provided", () => {
+  it("renders sentinel rows when provided", () => {
     const mockSentinels = [
       {
         id: "1",
@@ -64,7 +64,8 @@ describe("DashboardShell", () => {
         eventName: "Lease Renewal",
         triggerDate: "2025-06-15",
         originalClause: "Test clause",
-        webhookUrl: "https://example.com/webhook",
+        notificationMethod: "email" as const,
+        notificationTarget: "test@example.com",
         status: "PENDING" as const,
         createdAt: new Date(),
       },
@@ -85,3 +86,4 @@ describe("DashboardShell", () => {
     expect(screen.getByText(/no monitors active/i)).toBeInTheDocument();
   });
 });
+

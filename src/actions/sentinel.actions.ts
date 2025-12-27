@@ -47,8 +47,10 @@ interface ActionResult {
 const FormInputSchema = z.object({
   /** Natural language lease clause containing date/deadline information. */
   clause: z.string().min(10, "Lease clause must be at least 10 characters"),
-  /** Destination URL for webhook notifications when the deadline fires. */
-  webhookUrl: z.string().url("Webhook URL must be a valid URL"),
+  /** Notification delivery method. */
+  notificationMethod: z.enum(["slack", "teams", "email", "sms", "custom"]),
+  /** Target for notifications (email, phone, or webhook URL depending on method). */
+  notificationTarget: z.string().min(1, "Notification target is required"),
 });
 
 // ============================================================================
@@ -128,10 +130,11 @@ export async function createSentinel(
       };
     }
 
-    // A) Extract clause and webhookUrl from formData
+    // A) Extract form fields
     const rawInput = {
       clause: formData.get("clause"),
-      webhookUrl: formData.get("webhookUrl"),
+      notificationMethod: formData.get("notificationMethod"),
+      notificationTarget: formData.get("notificationTarget"),
     };
 
     // B) Validate inputs using Zod
@@ -154,7 +157,7 @@ export async function createSentinel(
       };
     }
 
-    const { clause, webhookUrl } = validatedInput.data;
+    const { clause, notificationMethod, notificationTarget } = validatedInput.data;
 
     // C) Call extractLeaseData
     const extracted = await extractLeaseData(clause);
@@ -173,7 +176,8 @@ export async function createSentinel(
       eventName: extracted.eventName,
       triggerDate: extracted.triggerDate,
       originalClause: clause,
-      webhookUrl: webhookUrl,
+      notificationMethod: notificationMethod,
+      notificationTarget: notificationTarget,
       status: "PENDING" as const,
       createdAt: new Date(),
     };

@@ -3,10 +3,10 @@
 import { useOptimistic, useTransition, useRef, useState } from "react";
 import Image from "next/image";
 import { addDays, format } from "date-fns";
-import { FileText, Sparkles, Shield, ArrowRight, Loader2 } from "lucide-react";
+import { FileText, Sparkles, Shield, ArrowRight, Loader2, Mail, Smartphone, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Sentinel } from "@/models/schema";
+import { Sentinel, NotificationMethod } from "@/models/schema";
 import { createSentinel, deleteSentinel } from "@/actions/sentinel.actions";
 import { UserNav } from "@/components/dashboard/user-nav";
 
@@ -82,12 +82,32 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   
+  // Notification method state
+  const [notificationMethod, setNotificationMethod] = useState<NotificationMethod>("custom");
+  const [smsPhone, setSmsPhone] = useState("");
+  const [customWebhook, setCustomWebhook] = useState("");
+  
   const [optimisticSentinels, addOptimistic] = useOptimistic<Sentinel[], Sentinel>(
     initialSentinels,
     (state, newSentinel) => [newSentinel, ...state]
   );
 
   const hasSentinels = optimisticSentinels.length > 0;
+
+  // Determine notification target based on method
+  function getNotificationTarget(): string {
+    switch (notificationMethod) {
+      case "slack":
+      case "teams":
+      case "email":
+        return user.email || "";
+      case "sms":
+        return smsPhone;
+      case "custom":
+      default:
+        return customWebhook;
+    }
+  }
 
   // Fill textarea with template
   function handleTemplateClick(clause: string) {
@@ -110,7 +130,12 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
   // Form submission
   async function handleSubmit(formData: FormData) {
     const clause = formData.get("clause") as string;
-    const webhookUrl = formData.get("webhookUrl") as string;
+    const target = getNotificationTarget();
+
+    if (!target) {
+      toast.error("Please provide a notification destination");
+      return;
+    }
 
     const optimisticSentinel: Sentinel = {
       id: `temp-${Date.now()}`,
@@ -118,10 +143,15 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
       eventName: "Analyzing...",
       triggerDate: new Date().toISOString().split("T")[0],
       originalClause: clause,
-      webhookUrl: webhookUrl,
+      notificationMethod: notificationMethod,
+      notificationTarget: target,
       status: "PENDING",
       createdAt: new Date(),
     };
+
+    // Add notification fields to formData
+    formData.set("notificationMethod", notificationMethod);
+    formData.set("notificationTarget", target);
 
     startTransition(async () => {
       addOptimistic(optimisticSentinel);
@@ -129,6 +159,9 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
       if (result.success) {
         toast.success(result.message);
         if (clauseRef.current) clauseRef.current.value = "";
+        // Reset notification state
+        setSmsPhone("");
+        setCustomWebhook("");
       } else {
         toast.error(result.message);
       }
@@ -237,17 +270,143 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
                 />
               </div>
 
+              {/* Notification Method Selector - Single Row */}
               <div className="space-y-2">
-                <Label htmlFor="webhookUrl" className="text-zinc-400">Alert Destination</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="webhookUrl"
-                    name="webhookUrl"
-                    type="url"
-                    placeholder="https://hooks.slack.com/... or your-email@company.com"
-                    required
-                    className="flex-1 bg-zinc-950/50 border-zinc-800 text-zinc-50 placeholder:text-zinc-600 focus:border-zinc-600 focus:ring-zinc-500/20"
-                  />
+                <Label className="text-zinc-400">Alert Destination</Label>
+                
+                <div className="flex gap-2 items-center">
+                  {/* Conditional Input */}
+                  {notificationMethod === "sms" ? (
+                    <Input
+                      type="tel"
+                      value={smsPhone}
+                      onChange={(e) => setSmsPhone(e.target.value)}
+                      placeholder="Enter phone number (+1 555-123-4567)"
+                      className="flex-1 bg-zinc-950/50 border-zinc-800 text-zinc-50 placeholder:text-zinc-600 focus:border-zinc-600 focus:ring-zinc-500/20"
+                    />
+                  ) : notificationMethod === "custom" ? (
+                    <Input
+                      type="url"
+                      value={customWebhook}
+                      onChange={(e) => setCustomWebhook(e.target.value)}
+                      placeholder="https://hooks.slack.com/..."
+                      className="flex-1 bg-zinc-950/50 border-zinc-800 text-zinc-50 placeholder:text-zinc-600 focus:border-zinc-600 focus:ring-zinc-500/20"
+                    />
+                  ) : (
+                    <Input
+                      disabled
+                      value={`We'll use: ${user.email || "N/A"}`}
+                      className="flex-1 bg-zinc-950/30 border-zinc-800 text-zinc-500 cursor-not-allowed"
+                    />
+                  )}
+
+                  {/* Notification Method Icon Buttons - Brand Colors */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          onClick={() => setNotificationMethod("slack")}
+                          className={`transition-colors ${
+                            notificationMethod === "slack"
+                              ? "bg-[#4A154B] hover:bg-[#5c1b5e] text-white ring-2 ring-[#4A154B]/50"
+                              : "bg-zinc-800 hover:bg-[#4A154B] text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M3.362 10.11c0 .926-.756 1.681-1.681 1.681S0 11.036 0 10.111.756 8.43 1.68 8.43h1.682zm.846 0c0-.924.756-1.68 1.681-1.68s1.681.756 1.681 1.68v4.21c0 .924-.756 1.68-1.68 1.68a1.685 1.685 0 0 1-1.682-1.68zM5.89 3.362c-.926 0-1.682-.756-1.682-1.681S4.964 0 5.89 0s1.68.756 1.68 1.68v1.682zm0 .846c.924 0 1.68.756 1.68 1.681S6.814 7.57 5.89 7.57H1.68C.757 7.57 0 6.814 0 5.89c0-.926.756-1.682 1.68-1.682zm6.749 1.682c0-.926.755-1.682 1.68-1.682S16 4.964 16 5.889s-.756 1.681-1.68 1.681h-1.681zm-.848 0c0 .924-.755 1.68-1.68 1.68A1.685 1.685 0 0 1 8.43 5.89V1.68C8.43.757 9.186 0 10.11 0c.926 0 1.681.756 1.681 1.68zm-1.681 6.748c.926 0 1.682.756 1.682 1.681S11.036 16 10.11 16s-1.681-.756-1.681-1.68v-1.682h1.68zm0-.847c-.924 0-1.68-.755-1.68-1.68s.756-1.681 1.68-1.681h4.21c.924 0 1.68.756 1.68 1.68 0 .926-.756 1.681-1.68 1.681z"/>
+                          </svg>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent><p>Slack</p></TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          onClick={() => setNotificationMethod("teams")}
+                          className={`transition-colors ${
+                            notificationMethod === "teams"
+                              ? "bg-[#5059C9] hover:bg-[#6068d4] text-white ring-2 ring-[#5059C9]/50"
+                              : "bg-zinc-800 hover:bg-[#5059C9] text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M9.186 4.797a2.42 2.42 0 1 0-2.86-2.448h1.178c.929 0 1.682.753 1.682 1.682zm-4.295 7.738h2.613c.929 0 1.682-.753 1.682-1.682V5.58h2.783a.7.7 0 0 1 .682.716v4.294a4.197 4.197 0 0 1-4.093 4.293c-1.618-.04-3-.99-3.667-2.35Zm10.737-9.372a1.674 1.674 0 1 1-3.349 0 1.674 1.674 0 0 1 3.349 0m-2.238 9.488-.12-.002a5.2 5.2 0 0 0 .381-2.07V6.306a1.7 1.7 0 0 0-.15-.725h1.792c.39 0 .707.317.707.707v3.765a2.6 2.6 0 0 1-2.598 2.598z"/>
+                            <path d="M.682 3.349h6.822c.377 0 .682.305.682.682v6.822a.68.68 0 0 1-.682.682H.682A.68.68 0 0 1 0 10.853V4.03c0-.377.305-.682.682-.682Zm5.206 2.596v-.72h-3.59v.72h1.357V9.66h.87V5.945z"/>
+                          </svg>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent><p>Teams</p></TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          onClick={() => setNotificationMethod("email")}
+                          className={`transition-colors ${
+                            notificationMethod === "email"
+                              ? "bg-[#EA4335] hover:bg-[#ef5648] text-white ring-2 ring-[#EA4335]/50"
+                              : "bg-zinc-800 hover:bg-[#EA4335] text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent><p>Email</p></TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          onClick={() => setNotificationMethod("sms")}
+                          className={`transition-colors ${
+                            notificationMethod === "sms"
+                              ? "bg-[#1a9048] hover:bg-[#1fa855] text-white ring-2 ring-[#1a9048]/50"
+                              : "bg-zinc-800 hover:bg-[#1a9048] text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          <Smartphone className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent><p>SMS</p></TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          onClick={() => setNotificationMethod("custom")}
+                          className={`transition-colors ${
+                            notificationMethod === "custom"
+                              ? "bg-zinc-600 hover:bg-zinc-500 text-white ring-2 ring-zinc-500/50"
+                              : "bg-zinc-800 hover:bg-zinc-600 text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          <Link2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent><p>Custom Webhook</p></TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  {/* Submit Button */}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -255,7 +414,7 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
                           type="submit" 
                           disabled={isPending}
                           size="icon"
-                          className="bg-zinc-800 hover:bg-zinc-700 text-zinc-50 border-zinc-700 transition-colors"
+                          className="bg-zinc-50 hover:bg-white text-zinc-900 transition-colors"
                         >
                           {isPending ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -264,14 +423,19 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
                           )}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="top">
+                      <TooltipContent>
                         <p>Activate Sentinel</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
+
                 <p className="text-xs text-zinc-500">
-                  Where notifications will be sent when the deadline approaches.
+                  {notificationMethod === "custom" 
+                    ? "Enter your webhook URL for direct integration."
+                    : notificationMethod === "sms"
+                    ? "Enter your phone number to receive SMS alerts."
+                    : "Notifications will be sent via your connected account."}
                 </p>
               </div>
             </form>
