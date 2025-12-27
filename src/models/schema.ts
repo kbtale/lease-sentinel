@@ -103,7 +103,6 @@ export type LogStatus = z.infer<typeof LogStatusEnum>;
  */
 export const NotificationMethodEnum = z.enum([
   "slack",
-  "teams", 
   "email",
   "sms",
   "custom"

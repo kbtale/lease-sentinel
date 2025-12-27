@@ -83,7 +83,7 @@ export async function getSentinels(): Promise<Sentinel[]> {
         triggerDate: data.triggerDate as string,
         originalClause: data.originalClause as string,
         webhookUrl: data.webhookUrl as string | undefined,
-        notificationMethod: (data.notificationMethod || "custom") as "slack" | "teams" | "email" | "sms" | "custom",
+        notificationMethod: (data.notificationMethod || "custom") as "slack" | "email" | "sms" | "custom",
         notificationTarget: (data.notificationTarget || data.webhookUrl || "") as string,
         status: data.status as "PENDING" | "FIRED",
         createdAt: createdAt,

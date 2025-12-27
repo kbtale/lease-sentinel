@@ -48,7 +48,7 @@ const FormInputSchema = z.object({
   /** Natural language lease clause containing date/deadline information. */
   clause: z.string().min(10, "Lease clause must be at least 10 characters"),
   /** Notification delivery method. */
-  notificationMethod: z.enum(["slack", "teams", "email", "sms", "custom"]),
+  notificationMethod: z.enum(["slack", "email", "sms", "custom"]),
   /** Target for notifications (email, phone, or webhook URL depending on method). */
   notificationTarget: z.string().min(1, "Notification target is required"),
 });
