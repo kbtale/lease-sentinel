@@ -1,8 +1,21 @@
-# LeaseSentinel
+<h1 align="center">LeaseSentinel</h1>
 
-**AI-powered lease deadline monitoring with proactive webhook alerts.**
+<p align="center">
+  AI-powered lease deadline monitoring with webhook alerts.
+  <br>
+  Transforms natural language lease clauses into structured deadline trackers.
+  <br>
+  <br>
+<img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Firebase-Firestore-FFCA28?logo=firebase&logoColor=black" alt="Firebase" />
+  <img src="https://img.shields.io/badge/AI-Gemini%203-8E75B2?logo=google&logoColor=white" alt="Gemini" />
+  <img src="https://img.shields.io/badge/Tailwind-CSS-38B2AC?logo=tailwind-css&logoColor=white" alt="Tailwind" />
+  <img src="https://img.shields.io/badge/License-MIT-blue" alt="License" />
+</p>
 
-LeaseSentinel transforms natural language lease clauses into structured deadline trackers. Paste a lease clause, and Gemini AI extracts the critical date; when that date arrives, your configured webhook fires:Slack, Discord, CRM, or any HTTP endpoint.
+<hr>
+
 <img width="1439" height="725" alt="image" src="https://github.com/user-attachments/assets/e22d2ea9-6e9d-4f24-91d4-1029b3cbbb77" />
 <img width="1158" height="717" alt="image" src="https://github.com/user-attachments/assets/c9182d69-ca49-4741-832e-3d2f3cf37fad" />
 
