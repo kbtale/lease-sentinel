@@ -10,11 +10,10 @@ export const proxy = auth((req) => {
 
   const isAuthRoute = pathname.startsWith("/api/auth");
   const isLoginRoute = pathname.startsWith("/login");
-  const isStaticAsset =
-    pathname.startsWith("/_next") ||
-    pathname.includes(".");
+  const isDemoRoute = pathname === "/demo" || pathname.startsWith("/demo/");
+  const isStaticAsset = pathname.startsWith("/_next") || pathname.includes(".");
 
-  if (isAuthRoute || isStaticAsset) {
+  if (isAuthRoute || isStaticAsset || isDemoRoute) {
     return NextResponse.next();
   }
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -145,6 +146,12 @@ export default function LoginPage() {
             <p className="text-xs text-center text-muted-foreground">
               We&apos;ll send you a magic link. No password needed.
             </p>
+
+            <div className="pt-2 border-t text-center">
+              <Button asChild variant="outline" className="w-full h-11 text-sm">
+                <Link href="/demo">Try Live Demo without signing in →</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>

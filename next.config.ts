@@ -1,16 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["unpdf", "mammoth"],
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "lh3.googleusercontent.com", // Google Profile Pictures
+        hostname: "lh3.googleusercontent.com",
       },
       {
         protocol: "https",
-        hostname: "googleusercontent.com", // General Google Images
+        hostname: "googleusercontent.com",
       },
     ],
   },
