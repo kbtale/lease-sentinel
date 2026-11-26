@@ -144,6 +144,7 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
       notificationMethod: notificationMethod,
       notificationTarget: target,
       status: "PENDING",
+      leadTimeDays: [30, 7, 0],
       notifiedWindows: [],
       createdAt: new Date(),
     };

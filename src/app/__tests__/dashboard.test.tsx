@@ -67,6 +67,7 @@ describe("DashboardShell", () => {
         notificationMethod: "email" as const,
         notificationTarget: "test@example.com",
         status: "PENDING" as const,
+        leadTimeDays: [30, 7, 0],
         notifiedWindows: [],
         createdAt: new Date(),
       },

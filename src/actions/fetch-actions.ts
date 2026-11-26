@@ -1,56 +1,32 @@
 "use server";
 
 import { getAdminDb } from "@/lib/firebase";
-import { Sentinel } from "@/models/schema";
+import {
+  DEFAULT_LEAD_TIME_DAYS,
+  LogEntry,
+  LogStatus,
+  NotificationMethod,
+  Sentinel,
+  SentinelStatus,
+} from "@/models/schema";
 import { auth } from "@/auth";
 
-/**
- * Fetches all sentinels for the authenticated user.
- * 
- * @summary Retrieves user's sentinels from Firestore with RLS filtering.
- * @category Server Actions
- * 
- * @security
- * **Authentication Required**: Returns empty array for unauthenticated requests.
- * 
- * **Row-Level Security**: Queries are filtered by `userId` (user's email) to ensure
- * users can only access their own sentinels. This filtering happens at the database
- * query level, not post-fetch, for efficiency and security.
- * 
- * @remarks
- * This function handles Firestore-specific serialization internally:
- * - Converts Firestore `Timestamp` objects to JavaScript `Date` objects
- * - Ensures all returned data is JSON-serializable for React Server Components
- * 
- * Results are ordered by `createdAt` descending (newest first).
- * 
- * @returns Promise resolving to array of {@link Sentinel} objects belonging to the
- *   current user, or empty array if:
- *   - User is not authenticated
- *   - No sentinels exist
- *   - Database error occurs
- * 
- * @example
- * ```tsx
- * // Server Component usage
- * import { getSentinels } from "@/actions/fetch-actions";
- * 
- * export default async function Dashboard() {
- *   const sentinels = await getSentinels();
- * 
- *   return (
- *     <ul>
- *       {sentinels.map((s) => (
- *         <li key={s.id}>{s.eventName} - {s.triggerDate}</li>
- *       ))}
- *     </ul>
- *   );
- * }
- * ```
- * 
- * @see {@link Sentinel} for the returned entity structure.
- * @see {@link createSentinel} for creating new sentinels.
- */
+function toDateValue(raw: unknown): Date | undefined {
+  if (raw && typeof (raw as { toDate?: () => Date }).toDate === "function") {
+    return (raw as { toDate: () => Date }).toDate();
+  }
+  if (raw instanceof Date) {
+    return raw;
+  }
+  if (typeof raw === "string") {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
 export async function getSentinels(): Promise<Sentinel[]> {
   try {
     const session = await auth();
@@ -66,35 +42,83 @@ export async function getSentinels(): Promise<Sentinel[]> {
 
     const sentinels: Sentinel[] = snapshot.docs.map((doc) => {
       const data = doc.data();
-
-      let createdAt: Date;
-      if (data.createdAt && typeof data.createdAt.toDate === "function") {
-        createdAt = data.createdAt.toDate();
-      } else if (data.createdAt instanceof Date) {
-        createdAt = data.createdAt;
-      } else {
-        createdAt = new Date();
-      }
+      const createdAt = toDateValue(data.createdAt) ?? new Date();
+      const updatedAt = toDateValue(data.updatedAt);
 
       return {
         id: doc.id,
         userId: data.userId as string,
         eventName: data.eventName as string,
+        propertyLabel:
+          typeof data.propertyLabel === "string" && data.propertyLabel.trim()
+            ? data.propertyLabel
+            : undefined,
         triggerDate: data.triggerDate as string,
         originalClause: data.originalClause as string,
         webhookUrl: data.webhookUrl as string | undefined,
-        notificationMethod: (data.notificationMethod || "custom") as "slack" | "email" | "sms" | "custom",
+        notificationMethod: (data.notificationMethod || "custom") as NotificationMethod,
         notificationTarget: (data.notificationTarget || data.webhookUrl || "") as string,
-        status: data.status as "PENDING" | "FIRED",
-        notifiedWindows: Array.isArray(data.notifiedWindows) ? (data.notifiedWindows as number[]) : [],
-        lastAttemptAt: typeof data.lastAttemptAt === "string" ? data.lastAttemptAt : undefined,
-        createdAt: createdAt,
+        status: (data.status || "PENDING") as SentinelStatus,
+        leadTimeDays:
+          Array.isArray(data.leadTimeDays) && data.leadTimeDays.length > 0
+            ? (data.leadTimeDays as number[])
+            : [...DEFAULT_LEAD_TIME_DAYS],
+        notifiedWindows: Array.isArray(data.notifiedWindows)
+          ? (data.notifiedWindows as number[])
+          : [],
+        lastAttemptAt:
+          typeof data.lastAttemptAt === "string" ? data.lastAttemptAt : undefined,
+        createdAt,
+        updatedAt,
       };
     });
 
     return sentinels;
   } catch (error) {
     console.error("Failed to fetch sentinels:", error);
+    return [];
+  }
+}
+
+export async function getSentinelLogs(sentinelId?: string): Promise<LogEntry[]> {
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return [];
+    }
+
+    const db = getAdminDb();
+
+    if (sentinelId) {
+      const sentinelDoc = await db.collection("sentinels").doc(sentinelId).get();
+      if (!sentinelDoc.exists || sentinelDoc.data()?.userId !== session.user.email) {
+        return [];
+      }
+    }
+
+    let query = db
+      .collection("logs")
+      .where("userId", "==", session.user.email);
+
+    if (sentinelId) {
+      query = query.where("sentinelId", "==", sentinelId);
+    }
+
+    const snapshot = await query.orderBy("firedAt", "desc").limit(50).get();
+
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        sentinelId: data.sentinelId as string,
+        userId: data.userId as string | undefined,
+        firedAt: data.firedAt as string,
+        payload: (data.payload || {}) as Record<string, unknown>,
+        status: data.status as LogStatus,
+      };
+    });
+  } catch (error) {
+    console.error("Failed to fetch sentinel logs:", error);
     return [];
   }
 }
