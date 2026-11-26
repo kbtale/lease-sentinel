@@ -1,79 +1,46 @@
-/**
- * Webhook dispatcher for sending alerts to external systems.
- * 
- * @remarks
- * This module handles outbound HTTP notifications to user-configured endpoints
- * (Slack, Discord, CRM systems, etc.). It enforces timeout safety to prevent
- * slow external services from blocking batch processing.
- * 
- * @module
- * @category Utilities
- */
+import crypto from "node:crypto";
+import { validateWebhookUrl } from "@/lib/url-safety";
 
-/**
- * Dispatches an alert payload to an external webhook URL.
- * 
- * @summary Sends JSON payload to external HTTP endpoint with timeout protection.
- * @category Utilities
- * 
- * @security
- * **Outbound Only**: This function only makes outbound HTTP requests. It does not
- * receive or process incoming webhooks.
- * 
- * **No Credential Exposure**: The payload is constructed by the caller. This function
- * does not include any server-side secrets in the request.
- * 
- * @remarks
- * Uses `AbortController` with a 5-second timeout to prevent slow external services
- * from stalling the cron batch job. In a serverless environment like Vercel, function
- * execution time is limited—a single unresponsive webhook could cause timeout for
- * all remaining sentinels in the batch.
- * 
- * The function returns a boolean rather than throwing to enable graceful degradation:
- * if one webhook fails, the cron job can continue processing other sentinels.
- * 
- * @param url - The external webhook URL to send the payload to.
- *   Must be a valid HTTP/HTTPS URL.
- * @param payload - The JSON data to send as the request body.
- *   Typically includes sentinel details like `eventName`, `triggerDate`, etc.
- * 
- * @returns Promise resolving to `true` if delivery succeeded (HTTP 2xx),
- *   `false` if delivery failed (network error, timeout, or non-2xx response).
- * 
- * @example
- * ```typescript
- * // Cron job usage
- * import { dispatchAlert } from "@/lib/webhook";
- * 
- * const success = await dispatchAlert(sentinel.webhookUrl, {
- *   event: sentinel.eventName,
- *   triggerDate: sentinel.triggerDate,
- *   message: `Deadline "${sentinel.eventName}" has been triggered.`,
- * });
- * 
- * if (!success) {
- *   // Log failure, retry later, or notify admin
- * }
- * ```
- * 
- * @see {@link LogSchema} for tracking dispatch results.
- */
+export interface DispatchAlertOptions {
+  signingSecret?: string;
+}
+
+export function signWebhookPayload(body: string, secret: string): string {
+  const digest = crypto.createHmac("sha256", secret).update(body).digest("hex");
+  return `sha256=${digest}`;
+}
+
 export async function dispatchAlert(
   url: string,
   payload: Record<string, unknown>,
-  headers?: Record<string, string>
+  headers?: Record<string, string>,
+  options?: DispatchAlertOptions
 ): Promise<boolean> {
+  const safety = await validateWebhookUrl(url);
+  if (!safety.valid) {
+    console.error(`Blocked unsafe webhook URL ${url}: ${safety.reason}`);
+    return false;
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const body = JSON.stringify(payload);
+  const signingSecret = options?.signingSecret ?? process.env.WEBHOOK_SIGNING_SECRET;
+  const requestHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...headers,
+  };
+
+  if (signingSecret) {
+    requestHeaders["X-LeaseSentinel-Signature"] = signWebhookPayload(body, signingSecret);
+  }
 
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
-      body: JSON.stringify(payload),
+      headers: requestHeaders,
+      body,
+      redirect: "error",
       signal: controller.signal,
     });
 

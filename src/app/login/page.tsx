@@ -7,31 +7,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction, signInWithEmail } from "@/actions/auth.actions";
 
-/**
- * Login page with split-screen layout.
- * Left: Auth form (40%) | Right: Brand wall (60%, hidden on mobile)
- */
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       await signInWithEmail(email);
       setEmailSent(true);
-    } catch {
-      // Error handling
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to send sign-in link. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Email sent confirmation view
   if (emailSent) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-8">
@@ -59,10 +60,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Auth Zone (40%) */}
       <div className="w-full lg:w-[40%] flex flex-col items-center justify-center px-8 lg:px-16 py-12 bg-background">
         <div className="w-full max-w-sm space-y-8">
-          {/* Header */}
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold tracking-tight">
               Welcome back
@@ -72,9 +71,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Auth Forms */}
           <div className="space-y-6">
-            {/* Google Sign-In */}
             <form action={loginAction}>
               <Button
                 type="submit"
@@ -103,7 +100,6 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
@@ -115,7 +111,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Email Magic Link */}
             <form onSubmit={handleEmailSignIn} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email address</Label>
@@ -130,6 +125,14 @@ export default function LoginPage() {
                   className="h-12"
                 />
               </div>
+              {errorMessage && (
+                <div
+                  role="alert"
+                  className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                >
+                  {errorMessage}
+                </div>
+              )}
               <Button
                 type="submit"
                 className="w-full h-12 text-base"
@@ -146,10 +149,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Side - Brand Wall (60%, hidden on mobile) */}
       <div className="hidden lg:flex lg:w-[60%] bg-zinc-900 text-white flex-col items-center justify-center p-16">
         <div className="max-w-lg text-center space-y-8">
-          {/* Logo */}
           <div className="flex items-center justify-center gap-3 mb-4">
             <Image
               src="/logo_white.svg"

@@ -1,85 +1,126 @@
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase";
 import { dispatchAlert } from "@/lib/webhook";
 import { getTodayISO } from "@/lib/date-utils";
 import { LogSchema, Sentinel } from "@/models/schema";
 
-// Force dynamic rendering - Firebase credentials unavailable at build time
 export const dynamic = "force-dynamic";
 
-// Central dispatcher webhook for Slack/Teams/Email/SMS routing
-const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL;
-const MAKE_API_KEY = process.env.MAKE_API_KEY;
+function isAuthorizedCronRequest(authHeader: string | null, cronSecret: string): boolean {
+  if (!authHeader) {
+    return false;
+  }
+  const expected = `Bearer ${cronSecret}`;
+  const actualBuf = Buffer.from(authHeader, "utf8");
+  const expectedBuf = Buffer.from(expected, "utf8");
+  if (actualBuf.length !== expectedBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(actualBuf, expectedBuf);
+}
 
-/**
- * Cron API Route - Processes pending sentinels and dispatches webhook alerts.
- * I designed this to be called daily by Vercel Cron at midnight UTC.
- */
 export async function GET(req: Request): Promise<NextResponse> {
-  // Security gate - verify CRON_SECRET
-  const authHeader = req.headers.get("Authorization");
-  const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return new NextResponse("CRON_SECRET is not configured", { status: 500 });
+  }
 
-  if (authHeader !== expectedAuth) {
+  const authHeader = req.headers.get("Authorization");
+  if (!isAuthorizedCronRequest(authHeader, cronSecret)) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
+  const makeWebhookUrl = process.env.MAKE_WEBHOOK_URL;
+  const makeApiKey = process.env.MAKE_API_KEY;
   const today = getTodayISO();
 
-  // Query sentinels where triggerDate matches today AND status is PENDING
   const snapshot = await getAdminDb()
     .collection("sentinels")
-    .where("triggerDate", "==", today)
     .where("status", "==", "PENDING")
+    .where("triggerDate", "<=", today)
     .get();
 
-  // allSettled ensures one crash doesn't stop other alerts from firing
-  const promises = snapshot.docs.map(async (doc) => {
-    const data = doc.data() as Sentinel;
+  let processedCount = 0;
 
-    // Determine dispatch URL and payload based on notification method
+  const promises = snapshot.docs.map(async (doc) => {
+    const data = doc.data() as Sentinel & {
+      notifiedWindows?: number[];
+      lastAttemptAt?: string;
+    };
+    const notifiedWindows = Array.isArray(data.notifiedWindows) ? data.notifiedWindows : [];
+
+    if (notifiedWindows.includes(0)) {
+      return;
+    }
+
+    processedCount += 1;
+    const attemptIso = new Date().toISOString();
+
     let dispatchUrl: string;
     let payload: Record<string, unknown>;
+    let headers: Record<string, string> | undefined;
 
     if (data.notificationMethod === "custom") {
-      // Custom webhook - send directly to user's URL
       dispatchUrl = data.notificationTarget;
       payload = {
         event: data.eventName,
         date: data.triggerDate,
         clause: data.originalClause,
       };
-    } else {
-      // Slack/Teams/Email/SMS - route through Make.com dispatcher
-      if (!MAKE_WEBHOOK_URL) {
-        console.error("MAKE_WEBHOOK_URL not configured - skipping non-custom notifications");
-        return;
-      }
-      dispatchUrl = MAKE_WEBHOOK_URL;
+    } else if (data.notificationMethod === "slack" && !makeWebhookUrl) {
+      dispatchUrl = data.notificationTarget;
       payload = {
-        method: data.notificationMethod,
-        handle: data.notificationTarget, // email or phone depending on method
+        text: `LeaseSentinel Alert: ${data.eventName} (Due ${data.triggerDate})\n${data.originalClause}`,
         event: data.eventName,
         date: data.triggerDate,
         clause: data.originalClause,
       };
+    } else {
+      if (!makeWebhookUrl) {
+        console.error("MAKE_WEBHOOK_URL not configured - skipping notification");
+        await doc.ref.update({ lastAttemptAt: attemptIso });
+        const logData = LogSchema.parse({
+          sentinelId: doc.id,
+          userId: data.userId,
+          firedAt: attemptIso,
+          status: "FAILED",
+          payload: {
+            method: data.notificationMethod,
+            event: data.eventName,
+            date: data.triggerDate,
+            error: "MAKE_WEBHOOK_URL not configured",
+          },
+        });
+        await getAdminDb().collection("logs").add(logData);
+        return;
+      }
+      dispatchUrl = makeWebhookUrl;
+      payload = {
+        method: data.notificationMethod,
+        handle: data.notificationTarget,
+        event: data.eventName,
+        date: data.triggerDate,
+        clause: data.originalClause,
+      };
+      if (makeApiKey) {
+        headers = { "x-make-apikey": makeApiKey };
+      }
     }
-
-    // Build headers - include API key for Make.com requests
-    const headers = data.notificationMethod !== "custom" && MAKE_API_KEY 
-      ? { "x-make-apikey": MAKE_API_KEY }
-      : undefined;
 
     const isSuccess = await dispatchAlert(dispatchUrl, payload, headers);
 
     if (isSuccess) {
-      // Update sentinel status to FIRED
-      await doc.ref.update({ status: "FIRED" });
+      await doc.ref.update({
+        status: "FIRED",
+        notifiedWindows: [...notifiedWindows, 0],
+        lastAttemptAt: attemptIso,
+      });
 
-      // Create success log entry
       const logData = LogSchema.parse({
         sentinelId: doc.id,
-        firedAt: new Date().toISOString(),
+        userId: data.userId,
+        firedAt: attemptIso,
         status: "SUCCESS",
         payload: {
           method: data.notificationMethod,
@@ -90,13 +131,13 @@ export async function GET(req: Request): Promise<NextResponse> {
 
       await getAdminDb().collection("logs").add(logData);
     } else {
-      // Log warning but leave status as PENDING for retry on next run
       console.warn(`Failed to dispatch alert for sentinel ${doc.id}`);
+      await doc.ref.update({ lastAttemptAt: attemptIso });
 
-      // Create failure log entry
       const logData = LogSchema.parse({
         sentinelId: doc.id,
-        firedAt: new Date().toISOString(),
+        userId: data.userId,
+        firedAt: attemptIso,
         status: "FAILED",
         payload: {
           method: data.notificationMethod,
@@ -114,6 +155,6 @@ export async function GET(req: Request): Promise<NextResponse> {
 
   return NextResponse.json({
     success: true,
-    processed: snapshot.docs.length,
+    processed: processedCount,
   });
 }

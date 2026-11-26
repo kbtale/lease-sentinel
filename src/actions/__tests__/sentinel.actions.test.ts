@@ -16,7 +16,11 @@ import { createSentinel, deleteSentinel } from "../sentinel.actions";
 // Mocks
 // ============================================================================
 
-// Mock NextAuth
+vi.mock("node:dns/promises", () => {
+  const lookup = vi.fn();
+  return { default: { lookup }, lookup };
+});
+
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
 }));
@@ -37,6 +41,7 @@ vi.mock("next/cache", () => ({
 }));
 
 // Import mocked modules for manipulation
+import { lookup } from "node:dns/promises";
 import { auth } from "@/auth";
 import { getAdminDb } from "@/lib/firebase";
 import { extractLeaseData } from "@/lib/ai";
@@ -92,6 +97,7 @@ function createMockDb(overrides: {
 describe("createSentinel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (lookup as Mock).mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
   });
 
   afterEach(() => {
@@ -202,6 +208,52 @@ describe("createSentinel", () => {
       expect(result.success).toBe(false);
       expect(result.errors?.clause).toBeDefined();
       expect(result.errors?.notificationTarget).toBeDefined();
+    });
+
+    it("rejects invalid email target for email method", async () => {
+      const formData = createMockFormData({
+        clause: "Tenant must provide notice 60 days before lease ends on Dec 31, 2025",
+        notificationMethod: "email",
+        notificationTarget: "not-an-email",
+      });
+
+      const result = await createSentinel(null, formData);
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.notificationTarget).toBeDefined();
+    });
+
+    it("rejects non-E.164 phone target for sms method", async () => {
+      const formData = createMockFormData({
+        clause: "Tenant must provide notice 60 days before lease ends on Dec 31, 2025",
+        notificationMethod: "sms",
+        notificationTarget: "555-1234",
+      });
+
+      const result = await createSentinel(null, formData);
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.notificationTarget).toBeDefined();
+    });
+
+    it("rejects SSRF and non-HTTPS webhook targets for custom and slack methods", async () => {
+      const invalidTargets = [
+        { method: "custom", target: "http://example.com/hook" },
+        { method: "custom", target: "https://169.254.169.254/latest/meta-data/" },
+        { method: "custom", target: "https://127.0.0.1/hook" },
+        { method: "slack", target: "https://10.0.0.1/hook" },
+      ];
+
+      for (const { method, target } of invalidTargets) {
+        const formData = createMockFormData({
+          clause: "Tenant must provide notice 60 days before lease ends on Dec 31, 2025",
+          notificationMethod: method,
+          notificationTarget: target,
+        });
+
+        const result = await createSentinel(null, formData);
+        expect(result.success).toBe(false);
+      }
     });
   });
 
@@ -316,7 +368,7 @@ describe("createSentinel", () => {
       const formData = createMockFormData({
         clause: "Tenant must provide notice 60 days before lease ends on Dec 31, 2025",
         notificationMethod: "slack",
-        notificationTarget: "test@example.com",
+        notificationTarget: "https://hooks.slack.com/services/T000/B000/XXX",
       });
 
       // Act
@@ -366,6 +418,7 @@ describe("createSentinel", () => {
 describe("deleteSentinel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (lookup as Mock).mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
   });
 
   afterEach(() => {

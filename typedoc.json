@@ -10,10 +10,10 @@
     "./src/lib/date-utils.ts",
     "./src/models/schema.ts"
   ],
-  "out": "./public/api-docs",
+  "out": "./.typedoc-out",
   "name": "LeaseSentinel Internal API",
   "readme": "./TYPEDOC_README.md",
-  "basePath": "/api-docs",
+  "basePath": "/",
   "includeVersion": true,
   "categorizeByGroup": true,
   "defaultCategory": "Core",
