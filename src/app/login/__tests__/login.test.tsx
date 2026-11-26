@@ -27,4 +27,11 @@ describe("LoginPage", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(/email provider unavailable/i);
     });
   });
+
+  it("renders a public live demo link to /demo", () => {
+    render(<LoginPage />);
+
+    const demoLink = screen.getByRole("link", { name: /try live demo/i });
+    expect(demoLink).toHaveAttribute("href", "/demo");
+  });
 });
