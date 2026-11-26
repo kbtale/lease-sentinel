@@ -5,13 +5,6 @@
       "schedule": "0 14 * * *"
     }
   ],
-  "redirects": [
-    {
-      "source": "/api-docs",
-      "destination": "/api-docs/index.html",
-      "permanent": true
-    }
-  ],
   "headers": [
     {
       "source": "/api/auth/(.*)",

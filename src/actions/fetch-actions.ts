@@ -86,6 +86,8 @@ export async function getSentinels(): Promise<Sentinel[]> {
         notificationMethod: (data.notificationMethod || "custom") as "slack" | "email" | "sms" | "custom",
         notificationTarget: (data.notificationTarget || data.webhookUrl || "") as string,
         status: data.status as "PENDING" | "FIRED",
+        notifiedWindows: Array.isArray(data.notifiedWindows) ? (data.notifiedWindows as number[]) : [],
+        lastAttemptAt: typeof data.lastAttemptAt === "string" ? data.lastAttemptAt : undefined,
         createdAt: createdAt,
       };
     });

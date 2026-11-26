@@ -94,14 +94,13 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
 
   const hasSentinels = optimisticSentinels.length > 0;
 
-  // Determine notification target based on method
   function getNotificationTarget(): string {
     switch (notificationMethod) {
-      case "slack":
       case "email":
         return user.email || "";
       case "sms":
         return smsPhone;
+      case "slack":
       case "custom":
       default:
         return customWebhook;
@@ -145,6 +144,7 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
       notificationMethod: notificationMethod,
       notificationTarget: target,
       status: "PENDING",
+      notifiedWindows: [],
       createdAt: new Date(),
     };
 
@@ -274,21 +274,20 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
                 <Label className="text-zinc-400">Alert Destination</Label>
                 
                 <div className="flex gap-2 items-center">
-                  {/* Conditional Input */}
                   {notificationMethod === "sms" ? (
                     <Input
                       type="tel"
                       value={smsPhone}
                       onChange={(e) => setSmsPhone(e.target.value)}
-                      placeholder="Enter phone number (+1 555-123-4567)"
+                      placeholder="Enter phone number (+14155552671)"
                       className="flex-1 bg-zinc-950/50 border-zinc-800 text-zinc-50 placeholder:text-zinc-600 focus:border-zinc-600 focus:ring-zinc-500/20"
                     />
-                  ) : notificationMethod === "custom" ? (
+                  ) : notificationMethod === "custom" || notificationMethod === "slack" ? (
                     <Input
                       type="url"
                       value={customWebhook}
                       onChange={(e) => setCustomWebhook(e.target.value)}
-                      placeholder="https://hooks.slack.com/..."
+                      placeholder="https://hooks.slack.com/services/..."
                       className="flex-1 bg-zinc-950/50 border-zinc-800 text-zinc-50 placeholder:text-zinc-600 focus:border-zinc-600 focus:ring-zinc-500/20"
                     />
                   ) : (

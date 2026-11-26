@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, Mock } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
  * Tests for AI extraction logic.
@@ -14,20 +14,16 @@ import { describe, it, expect, vi, beforeEach, afterEach, Mock } from "vitest";
 // Mocks
 // ============================================================================
 
-// Create a shared mock function for generateContent
 const mockGenerateContent = vi.fn();
+const mockGetGenerativeModel = vi.fn(() => ({
+  generateContent: mockGenerateContent,
+}));
 
-// Mock the Google Generative AI module
 vi.mock("@google/generative-ai", () => {
   return {
     GoogleGenerativeAI: class MockGoogleGenerativeAI {
-      constructor() {
-        // Constructor does nothing
-      }
-      getGenerativeModel() {
-        return {
-          generateContent: mockGenerateContent,
-        };
+      getGenerativeModel(config: unknown) {
+        return mockGetGenerativeModel(config);
       }
     },
   };
@@ -357,6 +353,45 @@ describe("extractLeaseData", () => {
       // Assert
       expect(result).not.toBeNull();
       expect(result?.eventName).toBe("Renovación de Contrato");
+    });
+
+    it("uses gemini-2.5-flash by default and respects GEMINI_MODEL env var", async () => {
+      mockGenerateContent.mockResolvedValue({
+        response: {
+          text: () => JSON.stringify({ eventName: "Notice", triggerDate: "2025-08-01" }),
+        },
+      });
+
+      const { extractLeaseData } = await import("@/lib/ai");
+      await extractLeaseData("Notice due August 1, 2025");
+      expect(mockGetGenerativeModel).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "gemini-2.5-flash" })
+      );
+
+      mockGetGenerativeModel.mockClear();
+      vi.stubEnv("GEMINI_MODEL", "gemini-2.5-pro");
+      await extractLeaseData("Notice due August 1, 2025");
+      expect(mockGetGenerativeModel).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "gemini-2.5-pro" })
+      );
+    });
+
+    it("rejects malformed or impossible calendar dates via Zod schema", async () => {
+      mockGenerateContent.mockResolvedValueOnce({
+        response: {
+          text: () => JSON.stringify({ eventName: "Bad Date", triggerDate: "2025-02-30" }),
+        },
+      });
+
+      const { extractLeaseData } = await import("@/lib/ai");
+      expect(await extractLeaseData("Some lease")).toBeNull();
+
+      mockGenerateContent.mockResolvedValueOnce({
+        response: {
+          text: () => JSON.stringify({ eventName: "Bad Format", triggerDate: "June 15, 2025" }),
+        },
+      });
+      expect(await extractLeaseData("Some lease")).toBeNull();
     });
   });
 });

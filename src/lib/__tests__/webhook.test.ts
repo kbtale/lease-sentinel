@@ -1,4 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach, Mock } from "vitest";
+import crypto from "node:crypto";
+
+vi.mock("node:dns/promises", () => {
+  const lookup = vi.fn();
+  return { default: { lookup }, lookup };
+});
+
+import { lookup } from "node:dns/promises";
 import { dispatchAlert } from "../webhook";
 
 /**
@@ -25,7 +33,7 @@ const originalFetch = global.fetch;
 describe("dispatchAlert", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset fetch mock before each test
+    (lookup as Mock).mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
     global.fetch = vi.fn();
   });
 
@@ -266,6 +274,41 @@ describe("dispatchAlert", () => {
       expect(result).toBe(true);
       const fetchCall = (global.fetch as Mock).mock.calls[0];
       expect(JSON.parse(fetchCall[1].body)).toEqual(complexPayload);
+    });
+  });
+
+  describe("SSRF Protection and HMAC Signing", () => {
+    it("blocks private, loopback, metadata, and http URLs without calling fetch", async () => {
+      const blocked = [
+        "http://example.com/webhook",
+        "https://127.0.0.1/hook",
+        "https://10.0.0.1/hook",
+        "https://169.254.169.254/latest/meta-data/",
+      ];
+
+      for (const url of blocked) {
+        const result = await dispatchAlert(url, { event: "Test" });
+        expect(result).toBe(false);
+      }
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("attaches X-LeaseSentinel-Signature header when WEBHOOK_SIGNING_SECRET is set", async () => {
+      vi.stubEnv("WEBHOOK_SIGNING_SECRET", "test-hmac-secret");
+      (global.fetch as Mock).mockResolvedValue({ ok: true, status: 200 });
+      const payload = { event: "Renewal", date: "2025-09-01" };
+
+      const result = await dispatchAlert("https://hooks.example.com/signed", payload);
+      vi.unstubAllEnvs();
+
+      expect(result).toBe(true);
+      const expectedSig = crypto
+        .createHmac("sha256", "test-hmac-secret")
+        .update(JSON.stringify(payload))
+        .digest("hex");
+      const fetchCall = (global.fetch as Mock).mock.calls[0];
+      expect(fetchCall[1].headers["X-LeaseSentinel-Signature"]).toBe(`sha256=${expectedSig}`);
     });
   });
 });

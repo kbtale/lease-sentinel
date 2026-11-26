@@ -1,9 +1,7 @@
 "use server";
 
-/**
- * Admin actions for system operations.
- * These are server-side only.
- */
+import { auth } from "@/auth";
+import { isAdminEmail } from "@/lib/admin";
 
 interface AdminResult {
   success: boolean;
@@ -13,19 +11,31 @@ interface AdminResult {
   };
 }
 
-/**
- * Manually triggers the cron job to process pending sentinels.
- * Server-side action that keeps CRON_SECRET private.
- * 
- * @returns Result object with success status and processed count.
- */
 export async function triggerCronManual(): Promise<AdminResult> {
   try {
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (!cronSecret) {
-      throw new Error("CRON_SECRET is not configured");
+    const session = await auth();
+    if (!session?.user?.email) {
+      return {
+        success: false,
+        message: "Unauthorized. Please sign in.",
+      };
     }
+
+    if (!isAdminEmail(session.user.email)) {
+      return {
+        success: false,
+        message: "Forbidden. Admin access required.",
+      };
+    }
+
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) {
+      return {
+        success: false,
+        message: "CRON_SECRET is not configured",
+      };
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const response = await fetch(`${baseUrl}/api/cron/check`, {
       method: "GET",
