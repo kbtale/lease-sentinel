@@ -3,11 +3,15 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { getAdminDb } from "@/lib/firebase";
-import { extractLeaseData } from "@/lib/ai";
+import { extractLeaseData, extractMultipleLeaseDeadlines } from "@/lib/ai";
+import { parseLeaseDocument } from "@/lib/document-parser";
 import { validateNotificationTarget } from "@/lib/url-safety";
 import { deliverSentinelNotification } from "@/lib/dispatch";
 import {
+  BatchSentinelItem,
+  CreateSentinelsBatchSchema,
   DEFAULT_LEAD_TIME_DAYS,
+  ExtractedDeadline,
   LogSchema,
   Sentinel,
   SentinelSchema,
@@ -18,10 +22,11 @@ import {
 } from "@/models/schema";
 import { auth } from "@/auth";
 
-interface ActionResult {
+interface ActionResult<T = undefined> {
   success: boolean;
   message: string;
   errors?: Record<string, string[]>;
+  data?: T;
 }
 
 const FormInputSchema = z.object({
@@ -158,6 +163,148 @@ export async function createSentinel(
     return {
       success: false,
       message,
+    };
+  }
+}
+
+export async function extractLeaseDocumentAction(
+  formData: FormData
+): Promise<
+  ActionResult<{
+    deadlines: ExtractedDeadline[];
+    fileName: string;
+    characterCount: number;
+  }>
+> {
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return {
+        success: false,
+        message: "Unauthorized. Please sign in.",
+      };
+    }
+
+    const uploadedFile = formData.get("file");
+    const pastedText = formData.get("text");
+
+    let text = "";
+    let fileName = "pasted-lease.txt";
+
+    if (uploadedFile && typeof uploadedFile === "object" && "arrayBuffer" in uploadedFile) {
+      const file = uploadedFile as File;
+      const arrayBuffer = await file.arrayBuffer();
+      const parsed = await parseLeaseDocument({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        buffer: Buffer.from(arrayBuffer),
+      });
+      text = parsed.text;
+      fileName = parsed.fileName;
+    } else if (typeof pastedText === "string" && pastedText.trim().length >= 20) {
+      text = pastedText.trim();
+    } else {
+      return {
+        success: false,
+        message: "Please upload a lease document or paste lease text.",
+      };
+    }
+
+    const deadlines = await extractMultipleLeaseDeadlines(text);
+
+    return {
+      success: true,
+      message: `Extracted ${deadlines.length} deadline${deadlines.length === 1 ? "" : "s"}`,
+      data: {
+        deadlines,
+        fileName,
+        characterCount: text.length,
+      },
+    };
+  } catch (error) {
+    console.error("Error extracting lease document:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to extract lease deadlines",
+    };
+  }
+}
+
+export async function createSentinelsBatch(
+  items: BatchSentinelItem[]
+): Promise<ActionResult<{ createdCount: number }>> {
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return {
+        success: false,
+        message: "Unauthorized. Please sign in.",
+      };
+    }
+
+    const validatedBatch = CreateSentinelsBatchSchema.safeParse(items);
+    if (!validatedBatch.success) {
+      return {
+        success: false,
+        message: validatedBatch.error.issues[0]?.message || "Invalid sentinel batch",
+      };
+    }
+
+    for (const item of validatedBatch.data) {
+      const targetCheck = await validateNotificationTarget(
+        item.notificationMethod,
+        item.notificationTarget
+      );
+      if (!targetCheck.valid) {
+        return {
+          success: false,
+          message: `Invalid target for "${item.eventName}": ${targetCheck.reason}`,
+        };
+      }
+    }
+
+    const db = getAdminDb();
+    const batch = db.batch();
+    const collection = db.collection("sentinels");
+    const now = new Date();
+
+    for (const item of validatedBatch.data) {
+      const sentinelData = SentinelSchema.parse({
+        userId: session.user.email,
+        eventName: item.eventName,
+        propertyLabel: item.propertyLabel || undefined,
+        triggerDate: item.triggerDate,
+        originalClause: item.originalClause,
+        notificationMethod: item.notificationMethod,
+        notificationTarget: item.notificationTarget.trim(),
+        status: "PENDING",
+        leadTimeDays: item.leadTimeDays,
+        notifiedWindows: [],
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      const docRef = collection.doc();
+      batch.set(docRef, sentinelData);
+    }
+
+    await batch.commit();
+    revalidatePath("/");
+
+    const createdCount = validatedBatch.data.length;
+    return {
+      success: true,
+      message: `Created ${createdCount} sentinel${createdCount === 1 ? "" : "s"} successfully`,
+      data: { createdCount },
+    };
+  } catch (error) {
+    console.error("Error creating sentinel batch:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to save extracted deadlines",
     };
   }
 }

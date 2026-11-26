@@ -395,3 +395,80 @@ describe("extractLeaseData", () => {
     });
   });
 });
+
+describe("extractMultipleLeaseDeadlines", () => {
+  beforeEach(() => {
+    vi.stubEnv("GOOGLE_API_KEY", "test-api-key");
+    mockGenerateContent.mockClear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("extracts and validates multiple structured deadlines from full lease text", async () => {
+    mockGenerateContent.mockResolvedValueOnce({
+      response: {
+        text: () =>
+          JSON.stringify({
+            deadlines: [
+              {
+                eventName: "Lease Renewal Notice",
+                triggerDate: "2026-09-01",
+                category: "renewal",
+                sourceQuote: "Tenant must notify landlord 90 days prior to Dec 1, 2026.",
+                suggestedLeadDays: [30, 7, 0],
+              },
+              {
+                eventName: "Annual Rent Escalation",
+                triggerDate: "2027-01-01",
+                category: "escalation",
+                sourceQuote: "Base rent increases 3% on January 1, 2027.",
+                suggestedLeadDays: [14, 0],
+              },
+            ],
+          }),
+      },
+    });
+
+    const { extractMultipleLeaseDeadlines } = await import("@/lib/ai");
+    const deadlines = await extractMultipleLeaseDeadlines("Full commercial lease text...");
+
+    expect(deadlines).toHaveLength(2);
+    expect(deadlines[0].category).toBe("renewal");
+    expect(deadlines[1].triggerDate).toBe("2027-01-01");
+  });
+
+  it("filters out entries with invalid calendar dates", async () => {
+    mockGenerateContent.mockResolvedValueOnce({
+      response: {
+        text: () =>
+          JSON.stringify({
+            deadlines: [
+              {
+                eventName: "Valid Deadline",
+                triggerDate: "2026-08-15",
+                category: "termination",
+                sourceQuote: "Termination option expires Aug 15, 2026.",
+                suggestedLeadDays: [30, 7, 0],
+              },
+              {
+                eventName: "Impossible Date",
+                triggerDate: "2026-02-30",
+                category: "other",
+                sourceQuote: "Invalid date",
+                suggestedLeadDays: [7, 0],
+              },
+            ],
+          }),
+      },
+    });
+
+    const { extractMultipleLeaseDeadlines } = await import("@/lib/ai");
+    const deadlines = await extractMultipleLeaseDeadlines("Lease text...");
+
+    expect(deadlines).toHaveLength(1);
+    expect(deadlines[0].eventName).toBe("Valid Deadline");
+  });
+});

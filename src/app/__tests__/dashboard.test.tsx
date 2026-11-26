@@ -2,10 +2,11 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 
-// Mock server actions
 vi.mock("@/actions/sentinel.actions", () => ({
   createSentinel: vi.fn(),
   deleteSentinel: vi.fn(),
+  extractLeaseDocumentAction: vi.fn(),
+  createSentinelsBatch: vi.fn(),
 }));
 
 vi.mock("@/actions/auth.actions", () => ({

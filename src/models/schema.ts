@@ -97,6 +97,54 @@ export const AIExtractionSchema = z.object({
 
 export type AIExtraction = z.infer<typeof AIExtractionSchema>;
 
+export const DeadlineCategoryEnum = z.enum([
+  "renewal",
+  "termination",
+  "escalation",
+  "payment",
+  "inspection",
+  "insurance",
+  "other",
+]);
+
+export type DeadlineCategory = z.infer<typeof DeadlineCategoryEnum>;
+
+export const ExtractedDeadlineSchema = z.object({
+  eventName: z.string().trim().min(3, "Event name must be at least 3 characters"),
+  triggerDate: IsoDateSchema,
+  category: DeadlineCategoryEnum.catch("other").default("other"),
+  sourceQuote: z.string().trim().min(1, "Source quote is required"),
+  suggestedLeadDays: z
+    .array(z.number().int().min(0).max(365))
+    .default([30, 7, 0])
+    .transform((days) =>
+      days.length > 0 ? Array.from(new Set(days)).sort((a, b) => b - a) : [30, 7, 0]
+    ),
+});
+
+export type ExtractedDeadline = z.infer<typeof ExtractedDeadlineSchema>;
+
+export const MultiExtractionSchema = z.object({
+  deadlines: z.array(ExtractedDeadlineSchema),
+});
+
+export const BatchSentinelItemSchema = z.object({
+  eventName: z.string().trim().min(3, "Event name must be at least 3 characters"),
+  propertyLabel: z.string().trim().max(120).optional(),
+  triggerDate: IsoDateSchema,
+  originalClause: z.string().trim().min(5, "Lease clause must be at least 5 characters"),
+  notificationMethod: NotificationMethodEnum,
+  notificationTarget: z.string().trim().min(1, "Notification target is required"),
+  leadTimeDays: LeadTimeDaysSchema.default([30, 7, 0]),
+});
+
+export type BatchSentinelItem = z.infer<typeof BatchSentinelItemSchema>;
+
+export const CreateSentinelsBatchSchema = z
+  .array(BatchSentinelItemSchema)
+  .min(1, "Select at least one deadline to save")
+  .max(50, "Cannot create more than 50 sentinels at once");
+
 export const LogSchema = z.object({
   id: z.string().optional(),
   sentinelId: z.string(),

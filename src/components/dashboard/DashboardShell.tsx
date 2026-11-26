@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Sentinel, NotificationMethod } from "@/models/schema";
 import { createSentinel, deleteSentinel } from "@/actions/sentinel.actions";
 import { UserNav } from "@/components/dashboard/user-nav";
+import { LeaseUploadDialog } from "@/components/dashboard/LeaseUploadDialog";
 
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -225,6 +226,7 @@ export function DashboardShell({ initialSentinels, user }: DashboardShellProps) 
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <LeaseUploadDialog defaultEmail={user.email || ""} />
           <span className="text-sm text-zinc-400 hidden sm:block">
             {user.name || user.email}
           </span>
